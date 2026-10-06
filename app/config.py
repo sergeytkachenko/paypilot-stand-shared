@@ -34,6 +34,19 @@ DEFECTS_ENV = os.environ.get("DEFECTS", "")
 
 LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "mock")
 LLM_MODEL = os.environ.get("LLM_MODEL", "")
+
+
+def _optional_float(name: str) -> float | None:
+    raw = os.environ.get(name, "").strip()
+    if raw == "":
+        return None
+    try:
+        return float(raw)
+    except ValueError:
+        raise RuntimeError(f"{name} must be a number, got {raw!r}")
+
+
+LLM_TEMPERATURE = _optional_float("LLM_TEMPERATURE")
 EXPLAIN_MODEL = os.environ.get("EXPLAIN_MODEL", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
@@ -45,6 +58,9 @@ KB_INDEX_ENV = os.environ.get("KB_INDEX", "")
 RAG_TOP_K = int(os.environ.get("RAG_TOP_K", "4"))
 
 CLOCK_OVERRIDE = os.environ.get("CLOCK_OVERRIDE", "")
+
+STAND_LOCK_GLOBAL = os.environ.get("STAND_LOCK_GLOBAL", "").lower() in ("1", "true", "yes")
+STAND_ADMIN_TOKEN = os.environ.get("STAND_ADMIN_TOKEN", "")
 
 DATA_DIR.mkdir(exist_ok=True)
 TRACES_DIR.mkdir(exist_ok=True)

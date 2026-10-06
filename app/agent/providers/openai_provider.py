@@ -6,6 +6,12 @@ import httpx
 from app import config
 from app.agent.providers.base import ModelResponse, Provider
 
+
+def _temperature() -> dict:
+    if config.LLM_TEMPERATURE is None:
+        return {}
+    return {"temperature": config.LLM_TEMPERATURE}
+
 API_URL = "https://api.openai.com/v1/chat/completions"
 DEFAULT_MODEL = "gpt-5-mini"
 
@@ -41,6 +47,7 @@ class OpenAIProvider(Provider):
     def complete(self, system, messages, tools):
         payload = {
             "model": self.model,
+            **_temperature(),
             "messages": _to_openai(system, messages),
         }
         if tools:

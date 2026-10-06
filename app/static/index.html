@@ -115,6 +115,8 @@
   .ptable th:nth-child(2),.ptable td:nth-child(2){width:12%}
   .ptable th{color:var(--warn);font-weight:600}
   .composer .hint{flex-basis:100%;font:11px var(--mono)}
+  .frag{font:11px var(--mono);color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere;
+        padding-left:8px;border-left:2px solid var(--line);margin:1px 0 1px 12px}
   code{font:11px var(--mono);background:var(--panel2);padding:1px 5px;border-radius:4px}
 
   /* narrow screens: these must sit after the base rules above */
@@ -145,6 +147,7 @@
            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}">
     <button class="primary" id="sendBtn" onclick="send()">Надіслати</button>
     <button id="cmpBtn" onclick="compare()" title="Той самий запит на clean і на профілі">clean vs профіль</button>
+    <button id="serBtn" onclick="series()" title="Те саме питання п'ять разів, щоразу з нової сесії">×5</button>
     <div class="hint" id="composerHint"></div>
   </div>
 </div>
@@ -154,7 +157,13 @@
     <h2>Профіль заняття</h2>
     <div class="row">
       <select id="profileSel" onchange="setProfile()"></select>
-      <button onclick="resetState()">Скинути стан</button>
+      <button id="resetBtn" onclick="resetState()">Скинути стан</button>
+      <button onclick="resetMySettings()">Типові налаштування</button>
+    </div>
+    <div class="hint" id="scopeHint" style="margin-top:6px"></div>
+    <div class="row" id="adminRow" style="margin-top:6px;display:none">
+      <input type="password" id="adminInp" placeholder="токен лектора">
+      <button onclick="setAdmin()">Увійти як лектор</button>
     </div>
   </div>
 
@@ -226,10 +235,60 @@
 const $ = function(id){ return document.getElementById(id); };
 let sessionId = null, lastTrace = null, lastStep = 0, currentProfile = '—';
 let extraDefects = new Set(), profileDefects = new Set();
+let standLocked = false, isAdmin = false;
 
 let ALL_IDS = [];   // filled from /api/_test/defects
 
+const SETTINGS_KEY = 'paypilot.settings', ADMIN_KEY = 'paypilot.admin';
+function readStore(key, fallback){
+  try{ const v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); }
+  catch(_){ return fallback; }
+}
+function writeStore(key, value){
+  try{
+    if(value === null) localStorage.removeItem(key); else localStorage.setItem(key, JSON.stringify(value));
+  }catch(_){}
+}
+let settings = readStore(SETTINGS_KEY, {}) || {};
+let adminToken = readStore(ADMIN_KEY, '') || '';
+
+function saveSettings(){ writeStore(SETTINGS_KEY, settings); }
+function withSetting(key, value){
+  const next = Object.assign({}, settings);
+  if(value === null || value === undefined || value === '') delete next[key];
+  else next[key] = value;
+  return next;
+}
+async function applySettings(next){
+  const h = await api('/health', {headers: {'X-Stand-Settings': JSON.stringify(next)}});
+  settings = next;
+  saveSettings();
+  return h;
+}
+function recoverSettings(message){
+  if(!/X-Stand-Settings/.test(message) || !Object.keys(settings).length) return false;
+  settings = {};
+  saveSettings();
+  addMsg('Збережені в браузері налаштування стенд відхилив (' + message +
+         '); скинуто до типових', 'err');
+  return true;
+}
+function settingsHeaders(){
+  const h = {};
+  if(Object.keys(settings).length) h['X-Stand-Settings'] = JSON.stringify(settings);
+  if(adminToken) h['X-Stand-Admin'] = adminToken;
+  return h;
+}
+function freshSession(reason){
+  sessionId = null;
+  lastStep = 0;
+  addMsg(reason + ' — нова сесія, попередня історія агенту далі не передається', 'sys');
+}
+
 async function api(path, opts){
+  opts = Object.assign({}, opts || {});
+  const headers = Object.assign({}, settingsHeaders(), opts.headers || {});
+  opts.headers = headers;
   const r = await fetch(path, opts);
   if(!r.ok){
     // FastAPI answers {"detail": "..."}; showing the raw body put JSON in
@@ -353,7 +412,10 @@ function renderComposerHint(){
   const cmpPart = (currentProfile === 'clean' && !pins.length)
     ? 'clean vs профіль — профіль зараз clean і дефектів не ввімкнено, обидві руки будуть однакові; оберіть профіль заняття праворуч'
     : 'clean vs профіль — те саме питання на clean і на ' + arm + ', обидві руки з нової сесії';
-  $('composerHint').textContent = sendPart + '. ' + cmpPart + '.';
+  const serPart = '×5 — те саме питання ' + SERIES_RUNS + ' разів на ' + arm +
+    (currentProfile === 'clean' && !pins.length ? '' : ' і ' + SERIES_RUNS + ' разів на clean') +
+    ', кожен прогін з нової сесії; рахує, у скількох прогонах викликано кожен інструмент';
+  $('composerHint').textContent = sendPart + '. ' + cmpPart + '. ' + serPart + '.';
   $('sendBtn').title = sendPart;
   $('cmpBtn').title = cmpPart;
 }
@@ -487,6 +549,95 @@ function renderMarked(marked, el, highlight){
     }
     el.appendChild(node);
   });
+}
+
+const SERIES_RUNS = 5;
+
+function toolSummary(arm){
+  const parts = Object.keys(arm.tool_counts).sort().map(function(name){
+    return name + ' ' + arm.tool_counts[name] + '/' + arm.runs.length;
+  });
+  return parts.length ? parts.join(' · ') : 'жодного інструмента не викликано';
+}
+
+function renderSeriesArm(holder, label, arm){
+  const col = document.createElement('div');
+  col.className = 'col ' + (arm.active_defects.length ? 'dirty' : 'clean');
+  const h = document.createElement('h3');
+  h.textContent = arm.profile +
+    (arm.active_defects.length ? ' · ' + arm.active_defects.join(',') : ' · без дефектів') +
+    ' · ' + arm.runs.length + ' прогонів';
+  col.appendChild(h);
+  const summary = document.createElement('div');
+  summary.className = 'verdict on';
+  summary.textContent = 'інструменти викликано: ' + toolSummary(arm);
+  col.appendChild(summary);
+  const table = document.createElement('table');
+  table.className = 'ptable';
+  const head = document.createElement('tr');
+  ['#', 'інструменти', 'відповідь', 'трейс'].forEach(function(t){
+    const th = document.createElement('th'); th.textContent = t; head.appendChild(th);
+  });
+  table.appendChild(head);
+  arm.runs.forEach(function(run, i){
+    const tr = document.createElement('tr');
+    const n = document.createElement('td'); n.textContent = String(i + 1); tr.appendChild(n);
+    const tools = document.createElement('td');
+    tools.textContent = run.tools_called.length ? run.tools_called.join(', ') : '—';
+    tr.appendChild(tools);
+    const ans = document.createElement('td');
+    renderRich(run.answer || '(порожньо)', ans);
+    tr.appendChild(ans);
+    const tr8 = document.createElement('td');
+    const a = document.createElement('a');
+    a.textContent = run.request_id.slice(0, 8);
+    a.onclick = function(){ loadTrace(run.request_id); };
+    tr8.appendChild(a);
+    tr.appendChild(tr8);
+    table.appendChild(tr);
+  });
+  col.appendChild(table);
+  const m = document.createElement('div');
+  m.className = 'meta';
+  m.textContent = 'in ' + arm.usage.input_tokens + ' / out ' + arm.usage.output_tokens +
+    ' tok · ' + Math.round(arm.elapsed_ms) + ' ms · промпт ' + arm.prompt_version;
+  col.appendChild(m);
+  holder.appendChild(col);
+}
+
+async function series(){
+  const inp = $('inp'), text = inp.value.trim();
+  if(!text){ addMsg('Введіть запит, який треба прогнати ' + SERIES_RUNS + ' разів', 'err'); return; }
+  inp.value = '';
+  addMsg(text, 'user');
+  $('serBtn').disabled = true; $('cmpBtn').disabled = true; $('sendBtn').disabled = true;
+  const holder = document.createElement('div');
+  holder.className = 'msg cmp';
+  holder.textContent = 'ганяю ' + SERIES_RUNS + ' разів… це до ' + (SERIES_RUNS * 2) +
+    ' викликів моделі, зачекайте';
+  $('msgs').appendChild(holder);
+  $('msgs').scrollTop = $('msgs').scrollHeight;
+  try{
+    const body = {message: text, runs: SERIES_RUNS};
+    const onClean = currentProfile === 'clean' && !extraDefects.size;
+    if(!onClean) body.profile = 'clean';
+    const d = await api('/api/_test/series', jpost(body));
+    holder.textContent = '';
+    renderSeriesArm(holder, 'current', d.arms.current);
+    if(d.arms.profile) renderSeriesArm(holder, 'profile', d.arms.profile);
+    const note = document.createElement('div');
+    note.className = 'hl';
+    note.textContent = 'Різниця між профілями — це різниця частот, не одна пара відповідей. ' +
+      'Прогін, у якому агент перепитав, теж рахується: так виглядає похибка еталона.';
+    holder.appendChild(note);
+    sessionId = null;
+  }catch(e){
+    holder.textContent = 'Помилка: ' + e.message;
+    holder.classList.add('err');
+  }finally{
+    $('serBtn').disabled = false; $('cmpBtn').disabled = false; $('sendBtn').disabled = false;
+    inp.focus();
+  }
 }
 
 async function compare(){
@@ -750,6 +901,8 @@ function renderTree(tree){
       if(seen[key] > 1){
         note = 'повтор ' + (seen[key] - 1) + ', ті самі аргументи';
         noteColor = '#ff8f8f';
+      }else if(a['retrieval.index']){
+        note = a['retrieval.index'] + ' / top_k ' + a['retrieval.top_k'];
       }
     }
     if(note){
@@ -766,6 +919,18 @@ function renderTree(tree){
       line.appendChild(t);
     }
     box.appendChild(line);
+    (a['retrieval.fragments'] || []).forEach(function(f){
+      const fl = document.createElement('div');
+      fl.className = 'frag';
+      fl.textContent = '  '.repeat(depth + 1) + f.id + ' · ' + f.score + ' · ' + (f.text || '');
+      box.appendChild(fl);
+    });
+    if(a['retrieval.index'] && !(a['retrieval.fragments'] || []).length){
+      const fl = document.createElement('div');
+      fl.className = 'frag';
+      fl.textContent = '  '.repeat(depth + 1) + 'жодного фрагмента не знайдено';
+      box.appendChild(fl);
+    }
     (n.children || []).forEach(function(c, i){ walk(c, depth + 1, path.concat(i)); });
   };
   walk(tree, 0, []);
@@ -780,15 +945,31 @@ function showAttrs(path){
 }
 
 async function refreshState(){
-  const results = await Promise.all([
-    api('/api/_test/defects'), api('/health'), api('/api/_test/clock'),
-    api('/api/_test/summarize_after'), api('/api/_test/retrieval')]);
+  let results;
+  try{
+    results = await Promise.all([
+      api('/api/_test/defects'), api('/health'), api('/api/_test/clock'),
+      api('/api/_test/summarize_after'), api('/api/_test/retrieval')]);
+  }catch(e){
+    if(recoverSettings(e.message)) return refreshState();
+    fail(e);
+    return;
+  }
   const d = results[0], h = results[1], c = results[2],
         sum = results[3], ret = results[4];
   profileDefects = new Set(d.profile_defects);
   extraDefects = new Set(d.extra_defects);
   currentProfile = d.profile;
-  $('pProfile').textContent = 'profile: ' + d.profile;
+  standLocked = !!h.locked;
+  isAdmin = !!h.admin;
+  $('pProfile').textContent = 'profile: ' + d.profile +
+    (h.scope === 'request' ? ' · мої налаштування' : ' · типові стенду');
+  $('resetBtn').style.display = (standLocked && !isAdmin) ? 'none' : '';
+  $('adminRow').style.display = (standLocked && !isAdmin) ? '' : 'none';
+  $('scopeHint').textContent = standLocked
+    ? (isAdmin ? 'Ви лектор: серверні дії відкриті. Профіль та інші налаштування все одно діють лише у цьому браузері.'
+               : 'Спільний стенд: профіль, дефекти, час і пошук діють лише у цьому браузері; інші студенти їх не бачать. Стенд без налаштувань стартує як ' + h.startup_profile + '.')
+    : 'Налаштування діють лише у цьому браузері; серверні типові — у .env стенду (' + h.startup_profile + ').';
   $('pDefects').textContent = d.active.length
     ? 'дефекти: ' + d.active.join(',') : 'дефектів немає';
   $('pDefects').className = 'pill ' + (d.active.length ? 'on' : 'clean');
@@ -809,13 +990,13 @@ async function refreshState(){
   // course teaches: the display looked right, the state was not.
   $('sumInp').value = sum.summarize_after_steps;
   $('topkInp').value = ret.top_k;
-  $('idxSel').value = ret.index_env || '';
+  $('idxSel').value = ret.requested_index || '';
 
   // And a knob off its default must not hide behind a closed panel.
   const off = [];
   if(sum.summarize_after_steps !== 8) off.push('згортка ' + sum.summarize_after_steps);
   if(ret.top_k !== 4) off.push('top_k ' + ret.top_k);
-  if(ret.index_env) off.push('індекс ' + ret.index_env);
+  if(ret.requested_index) off.push('індекс ' + ret.requested_index);
   const pk = $('pKnobs');
   pk.textContent = off.length ? off.join(' · ') : '';
   pk.style.display = off.length ? '' : 'none';
@@ -841,9 +1022,11 @@ function renderDefects(d){
 }
 
 async function toggleDefect(id){
-  if(extraDefects.has(id)) extraDefects.delete(id); else extraDefects.add(id);
+  const next = new Set(extraDefects);
+  if(next.has(id)) next.delete(id); else next.add(id);
   try{
-    await api('/api/_test/defects', jput({defects: Array.from(extraDefects).join(',')}));
+    await applySettings(withSetting('defects', Array.from(next).join(',')));
+    freshSession('Дефекти поверх профілю: ' + (next.size ? Array.from(next).join(',') : 'немає'));
   }catch(e){ fail(e); }
   refreshState();
 }
@@ -851,10 +1034,8 @@ async function toggleDefect(id){
 async function setProfile(){
   const p = $('profileSel').value;
   try{
-    await api('/api/_test/profile', jput({profile: p}));
-    sessionId = null;
-    lastStep = 0;
-    addMsg('Профіль перемкнено на ' + p + ' — нова сесія, попередня історія агенту далі не передається', 'sys');
+    await applySettings(withSetting('profile', p));
+    freshSession('Профіль перемкнено на ' + p);
   }catch(e){ fail(e); }
   refreshState();
 }
@@ -862,12 +1043,9 @@ async function setProfile(){
 async function setClock(reset){
   const v = reset ? null : ($('clockInp').value.trim() || null);
   try{
-    // Report what the endpoint actually applied. Dropping the runtime
-    // override falls back to CLOCK_OVERRIDE from the environment, so saying
-    // "реальний" was wrong whenever that variable is set — which is the
-    // documented default.
-    const st = await api('/api/_test/clock', jpost({now: v}));
-    addMsg('Час прогону: ' + (st.now || 'реальний час системи'), 'sys');
+    await applySettings(withSetting('clock', v));
+    const st = await api('/api/_test/clock');
+    freshSession('Час прогону: ' + (st.now || 'реальний час системи'));
     refreshState();
   }catch(e){ fail(e); }
 }
@@ -876,20 +1054,50 @@ async function setSummarize(){
   const v = parseInt($('sumInp').value.trim(), 10);
   if(!v || v < 1){ addMsg('Вкажіть номер кроку, після якого згортати (>= 1)', 'err'); return; }
   try{
-    const r = await api('/api/_test/summarize_after', jput({steps: v}));
-    addMsg('Згортка історії після кроку ' + r.summarize_after_steps, 'sys');
+    await applySettings(withSetting('summarize_after', v));
+    const r = await api('/api/_test/summarize_after');
+    freshSession('Згортка історії після кроку ' + r.summarize_after_steps);
+    refreshState();
   }catch(e){ fail(e); }
 }
 
 async function setRetrieval(){
-  const body = {};
   const k = $('topkInp').value.trim();
-  if(k) body.top_k = parseInt(k, 10);
-  body.index = $('idxSel').value;
+  const wantK = k ? parseInt(k, 10) : null;
+  const wantIdx = $('idxSel').value;
   try{
-    const r = await api('/api/_test/retrieval', jput(body));
-    addMsg('Пошук: top_k ' + r.top_k + ', індекс ' + r.index, 'sys');
+    await applySettings(withSetting('index', wantIdx));
+    await applySettings(withSetting('top_k', wantK));
+    const r = await api('/api/_test/retrieval');
+    freshSession('Пошук: top_k ' + r.top_k + ', індекс ' + r.index);
+    if(wantK && r.top_k !== wantK){
+      addMsg('Профіль заняття примусово задає top_k=' + r.top_k + '; ваше значення ' + wantK +
+             ' не діє, поки цей профіль активний', 'err');
+    }
+    if(!wantIdx && r.index === 'kb_broken'){
+      addMsg('Профіль заняття задає індекс kb_broken; оберіть kb_clean явно, якщо треба порівняти', 'sys');
+    }
+    refreshState();
   }catch(e){ fail(e); }
+}
+
+function resetMySettings(){
+  settings = {};
+  saveSettings();
+  freshSession('Налаштування цього браузера скинуто до типових стенду');
+  refreshState();
+}
+
+async function setAdmin(){
+  adminToken = $('adminInp').value.trim();
+  writeStore(ADMIN_KEY, adminToken || null);
+  $('adminInp').value = '';
+  try{
+    const h = await api('/health');
+    addMsg(h.admin ? 'Токен лектора прийнято: серверні дії відкриті' : 'Токен не підійшов', h.admin ? 'sys' : 'err');
+    if(!h.admin){ adminToken = ''; writeStore(ADMIN_KEY, null); }
+  }catch(e){ fail(e); }
+  refreshState();
 }
 
 // L01 audits the prompt as an artefact, and it was only reachable with curl —
@@ -907,11 +1115,13 @@ async function togglePrompt(){
 }
 
 async function resetState(){
-  const r = await api('/api/_test/reset', {method:'POST'});
-  newSession();
-  addMsg('Стан скинуто до seed ' + r.seed_version + ': ' + r.customers +
-         ' клієнтів, ' + r.accounts + ' рахунків, ' + r.transactions +
-         ' транзакцій', 'sys');
+  try{
+    const r = await api('/api/_test/reset', {method:'POST'});
+    newSession();
+    addMsg('Стан скинуто до seed ' + r.seed_version + ': ' + r.customers +
+           ' клієнтів, ' + r.accounts + ' рахунків, ' + r.transactions +
+           ' транзакцій', 'sys');
+  }catch(e){ fail(e); }
 }
 
 async function loadSeed(){
@@ -938,7 +1148,12 @@ $('inp').addEventListener('keydown', function(e){
 
 refreshState();
 loadSeed();
-addMsg('Стенд готовий. Оберіть профіль заняття та ставте питання агенту.', 'sys');
+addMsg('Стенд готовий. clean — це агент без інжектованих дефектів, а не гарантовано правильна відповідь: ' +
+       'модель має власну похибку, тож доказ — різниця частот, а не одна пара відповідей.', 'sys');
+addMsg('Профіль, дефекти, час і пошук, які ви задаєте праворуч, діють лише у цьому браузері; ' +
+       'інші студенти працюють зі своїми.', 'sys');
+addMsg('«clean vs профіль» ставить одне питання на обидва профілі поруч; «×5» — п\'ять разів із нової сесії ' +
+       'й рахує, у скількох прогонах викликано кожен інструмент.', 'sys');
 $('inp').focus();
 </script>
 </body>
