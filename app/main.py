@@ -1,4 +1,5 @@
 ""
+import hmac
 import os
 import threading
 
@@ -18,10 +19,11 @@ app = FastAPI(title="PayPilot stand", version="0.1.0")
 STATIC_DIR = config.ROOT / "app" / "static"
 
 LOCKED_DETAIL = (
-    "Це спільний стенд: серверні налаштування закриті. Профіль, дефекти, "
+    "Це спільний стенд: серверні PUT і скидання бази закриті. Профіль, дефекти, "
     f"top_k, індекс, годинник і згортку задавайте заголовком {runctx.HEADER} "
-    "(панель чату робить це сама), серії прогонів, eval і скидання бази — на "
-    f"власному стенді. Лектор відкриває серверні дії заголовком {runctx.ADMIN_HEADER}.")
+    "(панель чату робить це сама); чат, clean vs профіль і ×5 працюють без нього. "
+    "Скрипти з PUT, eval-прогони і скидання бази — на власному стенді. "
+    f"Лектор відкриває серверні дії заголовком {runctx.ADMIN_HEADER}.")
 
 
 @app.middleware("http")
@@ -40,7 +42,8 @@ async def request_settings(request: Request, call_next):
 
 def is_admin(request: Request) -> bool:
     supplied = request.headers.get(runctx.ADMIN_HEADER, "")
-    return bool(config.STAND_ADMIN_TOKEN) and supplied == config.STAND_ADMIN_TOKEN
+    return bool(config.STAND_ADMIN_TOKEN) and hmac.compare_digest(
+        supplied.encode(), config.STAND_ADMIN_TOKEN.encode())
 
 
 def require_server_write(request: Request) -> None:
@@ -170,7 +173,7 @@ def test_series(body: SeriesIn):
         out = {"runs": runs, "scope": "request", "arms": {}}
         out["arms"]["current"] = _series_arm(body.message, runs)
         if body.profile is not None:
-            with runctx.override(profile=body.profile):
+            with runctx.override(profile=body.profile, defects=""):
                 out["arms"]["profile"] = _series_arm(body.message, runs)
         return out
     finally:

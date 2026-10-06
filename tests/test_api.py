@@ -258,6 +258,10 @@ def test_ui_keeps_settings_in_the_browser_and_sends_them_as_a_header():
     assert "function series" in ui and 'id="serBtn"' in ui
     assert "retrieval.fragments" in ui
     assert "resetBtn" in ui and "adminRow" in ui
+    for fn in ("setProfile", "toggleDefect", "setClock", "setSummarize", "setRetrieval"):
+        body = ui.split("async function " + fn)[1].split("\n}\n")[0]
+        assert "applySettings(" in body, f"{fn} must let the server validate before saving"
+    assert "function recoverSettings" in ui
 
 
 def test_ui_tells_what_each_send_button_does():
@@ -505,6 +509,11 @@ def test_series_runs_fresh_sessions_and_counts_the_tools():
     assert all(x["step_number"] == 1 for x in cur["runs"])
     assert cur["tool_counts"] == {"get_account": 3}
     assert prof["prompt_version"] == "base.v1+D01+D02+D03"
+    pinned = client.post("/api/_test/series",
+                         json={"message": "hi", "runs": 1, "profile": "clean"},
+                         headers=_hdr(profile="lesson-03", defects="D26")).json()
+    assert pinned["arms"]["current"]["active_defects"] == ["D19", "D20", "D21", "D22", "D26"]
+    assert pinned["arms"]["profile"]["active_defects"] == [], "the clean arm must drop pinned defects"
     capped = client.post("/api/_test/series", json={"message": "hi", "runs": 50}).json()
     assert capped["runs"] == 5
     bad = client.post("/api/_test/series", json={"message": "hi", "profile": "lesson-99"})
@@ -568,8 +577,14 @@ def test_retrieval_trace_carries_the_fragment_text():
 def test_providers_send_temperature_only_when_configured(monkeypatch):
     from app import config as cfg
     from app.agent.providers import anthropic_provider, openai_provider
-    monkeypatch.setattr(cfg, "LLM_TEMPERATURE", "")
+    monkeypatch.setattr(cfg, "LLM_TEMPERATURE", None)
     assert anthropic_provider._temperature() == {} and openai_provider._temperature() == {}
-    monkeypatch.setattr(cfg, "LLM_TEMPERATURE", "0")
+    monkeypatch.setattr(cfg, "LLM_TEMPERATURE", 0.0)
     assert anthropic_provider._temperature() == {"temperature": 0.0}
     assert openai_provider._temperature() == {"temperature": 0.0}
+    monkeypatch.setenv("LLM_TEMPERATURE", "abc")
+    import pytest
+    with pytest.raises(RuntimeError):
+        cfg._optional_float("LLM_TEMPERATURE")
+    monkeypatch.setenv("LLM_TEMPERATURE", "0.2")
+    assert cfg._optional_float("LLM_TEMPERATURE") == 0.2

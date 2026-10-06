@@ -253,10 +253,25 @@ let settings = readStore(SETTINGS_KEY, {}) || {};
 let adminToken = readStore(ADMIN_KEY, '') || '';
 
 function saveSettings(){ writeStore(SETTINGS_KEY, settings); }
-function setSetting(key, value){
-  if(value === null || value === undefined || value === '') delete settings[key];
-  else settings[key] = value;
+function withSetting(key, value){
+  const next = Object.assign({}, settings);
+  if(value === null || value === undefined || value === '') delete next[key];
+  else next[key] = value;
+  return next;
+}
+async function applySettings(next){
+  const h = await api('/health', {headers: {'X-Stand-Settings': JSON.stringify(next)}});
+  settings = next;
   saveSettings();
+  return h;
+}
+function recoverSettings(message){
+  if(!/X-Stand-Settings/.test(message) || !Object.keys(settings).length) return false;
+  settings = {};
+  saveSettings();
+  addMsg('Збережені в браузері налаштування стенд відхилив (' + message +
+         '); скинуто до типових', 'err');
+  return true;
 }
 function settingsHeaders(){
   const h = {};
@@ -272,7 +287,8 @@ function freshSession(reason){
 
 async function api(path, opts){
   opts = Object.assign({}, opts || {});
-  opts.headers = Object.assign({}, settingsHeaders(), opts.headers || {});
+  const headers = Object.assign({}, settingsHeaders(), opts.headers || {});
+  opts.headers = headers;
   const r = await fetch(path, opts);
   if(!r.ok){
     // FastAPI answers {"detail": "..."}; showing the raw body put JSON in
@@ -929,9 +945,16 @@ function showAttrs(path){
 }
 
 async function refreshState(){
-  const results = await Promise.all([
-    api('/api/_test/defects'), api('/health'), api('/api/_test/clock'),
-    api('/api/_test/summarize_after'), api('/api/_test/retrieval')]);
+  let results;
+  try{
+    results = await Promise.all([
+      api('/api/_test/defects'), api('/health'), api('/api/_test/clock'),
+      api('/api/_test/summarize_after'), api('/api/_test/retrieval')]);
+  }catch(e){
+    if(recoverSettings(e.message)) return refreshState();
+    fail(e);
+    return;
+  }
   const d = results[0], h = results[1], c = results[2],
         sum = results[3], ret = results[4];
   profileDefects = new Set(d.profile_defects);
@@ -999,34 +1022,39 @@ function renderDefects(d){
 }
 
 async function toggleDefect(id){
-  if(extraDefects.has(id)) extraDefects.delete(id); else extraDefects.add(id);
-  setSetting('defects', Array.from(extraDefects).join(','));
-  freshSession('Дефекти поверх профілю: ' + (extraDefects.size ? Array.from(extraDefects).join(',') : 'немає'));
+  const next = new Set(extraDefects);
+  if(next.has(id)) next.delete(id); else next.add(id);
+  try{
+    await applySettings(withSetting('defects', Array.from(next).join(',')));
+    freshSession('Дефекти поверх профілю: ' + (next.size ? Array.from(next).join(',') : 'немає'));
+  }catch(e){ fail(e); }
   refreshState();
 }
 
 async function setProfile(){
   const p = $('profileSel').value;
-  setSetting('profile', p);
-  freshSession('Профіль перемкнено на ' + p);
+  try{
+    await applySettings(withSetting('profile', p));
+    freshSession('Профіль перемкнено на ' + p);
+  }catch(e){ fail(e); }
   refreshState();
 }
 
 async function setClock(reset){
   const v = reset ? null : ($('clockInp').value.trim() || null);
-  setSetting('clock', v);
   try{
+    await applySettings(withSetting('clock', v));
     const st = await api('/api/_test/clock');
     freshSession('Час прогону: ' + (st.now || 'реальний час системи'));
     refreshState();
-  }catch(e){ setSetting('clock', null); fail(e); }
+  }catch(e){ fail(e); }
 }
 
 async function setSummarize(){
   const v = parseInt($('sumInp').value.trim(), 10);
   if(!v || v < 1){ addMsg('Вкажіть номер кроку, після якого згортати (>= 1)', 'err'); return; }
-  setSetting('summarize_after', v);
   try{
+    await applySettings(withSetting('summarize_after', v));
     const r = await api('/api/_test/summarize_after');
     freshSession('Згортка історії після кроку ' + r.summarize_after_steps);
     refreshState();
@@ -1037,9 +1065,9 @@ async function setRetrieval(){
   const k = $('topkInp').value.trim();
   const wantK = k ? parseInt(k, 10) : null;
   const wantIdx = $('idxSel').value;
-  setSetting('top_k', wantK);
-  setSetting('index', wantIdx);
   try{
+    await applySettings(withSetting('index', wantIdx));
+    await applySettings(withSetting('top_k', wantK));
     const r = await api('/api/_test/retrieval');
     freshSession('Пошук: top_k ' + r.top_k + ', індекс ' + r.index);
     if(wantK && r.top_k !== wantK){

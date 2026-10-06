@@ -9,9 +9,9 @@ from app.agent.providers.base import ModelResponse, Provider
 
 
 def _temperature() -> dict:
-    if config.LLM_TEMPERATURE == "":
+    if config.LLM_TEMPERATURE is None:
         return {}
-    return {"temperature": float(config.LLM_TEMPERATURE)}
+    return {"temperature": config.LLM_TEMPERATURE}
 
 API_URL = "https://api.anthropic.com/v1/messages"
 DEFAULT_MODEL = "claude-haiku-4-5"

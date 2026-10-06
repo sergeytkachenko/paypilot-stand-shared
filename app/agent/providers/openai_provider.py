@@ -8,9 +8,9 @@ from app.agent.providers.base import ModelResponse, Provider
 
 
 def _temperature() -> dict:
-    if config.LLM_TEMPERATURE == "":
+    if config.LLM_TEMPERATURE is None:
         return {}
-    return {"temperature": float(config.LLM_TEMPERATURE)}
+    return {"temperature": config.LLM_TEMPERATURE}
 
 API_URL = "https://api.openai.com/v1/chat/completions"
 DEFAULT_MODEL = "gpt-5-mini"

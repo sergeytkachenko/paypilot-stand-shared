@@ -34,7 +34,19 @@ DEFECTS_ENV = os.environ.get("DEFECTS", "")
 
 LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "mock")
 LLM_MODEL = os.environ.get("LLM_MODEL", "")
-LLM_TEMPERATURE = os.environ.get("LLM_TEMPERATURE", "")
+
+
+def _optional_float(name: str) -> float | None:
+    raw = os.environ.get(name, "").strip()
+    if raw == "":
+        return None
+    try:
+        return float(raw)
+    except ValueError:
+        raise RuntimeError(f"{name} must be a number, got {raw!r}")
+
+
+LLM_TEMPERATURE = _optional_float("LLM_TEMPERATURE")
 EXPLAIN_MODEL = os.environ.get("EXPLAIN_MODEL", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
