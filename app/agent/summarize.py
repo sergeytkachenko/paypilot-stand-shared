@@ -1,5 +1,5 @@
 ""
-from app import config, defects
+from app import config, defects, runctx
 
 CLEAN_INSTRUCTION = (
     "Summarize the following support conversation for your own future "
@@ -32,8 +32,13 @@ _DATE_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b|\b(?:January|February|March|April|
                       r"May|June|July|August|September|October|November|December)\s+\d{1,2}\b", re.I)
 
 
+def summarize_after_steps() -> int:
+    requested = runctx.current().summarize_after
+    return requested if requested is not None else config.SUMMARIZE_AFTER_STEPS
+
+
 def should_summarize(step_number: int) -> bool:
-    return step_number > config.SUMMARIZE_AFTER_STEPS
+    return step_number > summarize_after_steps()
 
 
 def _transform_summary(text: str) -> str:

@@ -34,6 +34,7 @@ DEFECTS_ENV = os.environ.get("DEFECTS", "")
 
 LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "mock")
 LLM_MODEL = os.environ.get("LLM_MODEL", "")
+LLM_TEMPERATURE = os.environ.get("LLM_TEMPERATURE", "")
 EXPLAIN_MODEL = os.environ.get("EXPLAIN_MODEL", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
@@ -45,6 +46,9 @@ KB_INDEX_ENV = os.environ.get("KB_INDEX", "")
 RAG_TOP_K = int(os.environ.get("RAG_TOP_K", "4"))
 
 CLOCK_OVERRIDE = os.environ.get("CLOCK_OVERRIDE", "")
+
+STAND_LOCK_GLOBAL = os.environ.get("STAND_LOCK_GLOBAL", "").lower() in ("1", "true", "yes")
+STAND_ADMIN_TOKEN = os.environ.get("STAND_ADMIN_TOKEN", "")
 
 DATA_DIR.mkdir(exist_ok=True)
 TRACES_DIR.mkdir(exist_ok=True)

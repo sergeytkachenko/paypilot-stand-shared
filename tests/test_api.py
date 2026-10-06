@@ -235,11 +235,29 @@ def test_ui_highlights_the_word_diff_without_innerhtml():
     assert "innerHTML" not in body
 
 
-def test_ui_starts_a_fresh_session_when_the_profile_changes():
+def test_ui_starts_a_fresh_session_when_any_setting_changes():
+    """Changing the profile started a new session, changing the index, the
+    clock, the fold threshold or a pinned defect did not — so "ask the same
+    question again" on L04 ran as turn two of one dialogue."""
     ui = _ui()
-    body = ui.split("async function setProfile")[1].split("async function setClock")[0]
-    assert "sessionId = null" in body
-    assert body.index("await api('/api/_test/profile'") < body.index("sessionId = null")
+    for fn, nxt in (("setProfile", "setClock"), ("setClock", "setSummarize"),
+                    ("setSummarize", "setRetrieval"), ("setRetrieval", "resetMySettings"),
+                    ("toggleDefect", "setProfile")):
+        body = ui.split("async function " + fn)[1].split("function " + nxt)[0]
+        assert "freshSession(" in body, fn
+    assert "sessionId = null" in ui.split("function freshSession")[1].split("}")[0]
+
+
+def test_ui_keeps_settings_in_the_browser_and_sends_them_as_a_header():
+    ui = _ui()
+    assert "localStorage" in ui
+    assert "'X-Stand-Settings'" in ui and "'X-Stand-Admin'" in ui
+    for fn in ("setProfile", "toggleDefect", "setClock", "setSummarize", "setRetrieval"):
+        body = ui.split("async function " + fn)[1].split("\n}\n")[0]
+        assert "jput(" not in body, f"{fn} still writes server-wide state"
+    assert "function series" in ui and 'id="serBtn"' in ui
+    assert "retrieval.fragments" in ui
+    assert "resetBtn" in ui and "adminRow" in ui
 
 
 def test_ui_tells_what_each_send_button_does():
@@ -399,3 +417,159 @@ def test_compose_passes_the_explain_model_into_the_container():
     from app import config
     compose = (config.ROOT / "docker-compose.yml").read_text(encoding="utf-8")
     assert "EXPLAIN_MODEL=${EXPLAIN_MODEL:-}" in compose
+
+
+def _hdr(**settings):
+    import json
+    return {"X-Stand-Settings": json.dumps(settings)}
+
+
+def test_request_settings_isolate_the_profile_between_clients():
+    """Two students on one stand: the header decides what each of them runs,
+    and neither sees the other's choice."""
+    a = client.get("/health", headers=_hdr(profile="lesson-01")).json()
+    b = client.get("/health", headers=_hdr(profile="lesson-03")).json()
+    plain = client.get("/health").json()
+    assert a["profile"] == "lesson-01" and a["scope"] == "request"
+    assert b["profile"] == "lesson-03"
+    assert plain["profile"] == "clean" and plain["scope"] == "server"
+    ra = client.post("/chat", json={"message": "What is the balance for CUS-0001?"},
+                     headers=_hdr(profile="lesson-01")).json()
+    tree = client.get(f"/api/_test/traces/{ra['request_id']}").json()
+    assert tree["attributes"]["run.profile"] == "lesson-01"
+    assert ra["prompt_version"].startswith("base.v1+")
+    rb = client.post("/chat", json={"message": "What is the balance for CUS-0001?"}).json()
+    assert rb["prompt_version"] == "base.v1"
+
+
+def test_request_settings_cover_every_knob():
+    ret = client.get("/api/_test/retrieval", headers=_hdr(top_k=2, index="kb_broken")).json()
+    assert ret["top_k"] == 2 and ret["index"] == "kb_broken" and ret["scope"] == "request"
+    assert client.get("/api/_test/retrieval").json()["top_k"] == 4
+    fold = client.get("/api/_test/summarize_after", headers=_hdr(summarize_after=2)).json()
+    assert fold["summarize_after_steps"] == 2
+    clk = client.get("/api/_test/clock", headers=_hdr(clock="2026-12-01T00:00:00Z")).json()
+    assert clk["now"].startswith("2026-12-01")
+    assert client.get("/api/_test/clock").json()["now"].startswith("2026-09-15")
+    d = client.get("/api/_test/defects", headers=_hdr(defects="D19,D26")).json()
+    assert d["active"] == ["D19", "D26"] and d["extra_defects"] == ["D19", "D26"]
+    assert client.get("/api/_test/defects").json()["active"] == []
+
+
+def test_request_settings_reject_garbage_with_400():
+    for bad in ('{"profile": "lesson-99"}', '{"top_k": 0}', '{"index": "kb_x"}',
+                '{"clock": "yesterday"}', '{"defects": "D99"}', '{"nope": 1}',
+                'not json', '[1,2]'):
+        r = client.get("/health", headers={"X-Stand-Settings": bad})
+        assert r.status_code == 400, bad
+        assert "X-Stand-Settings" in r.json()["detail"], bad
+
+
+def test_compare_leaves_the_server_state_and_other_sessions_alone():
+    """compare used to flip the global profile twice and wipe every session
+    on the stand, so a student mid-dialogue lost their history whenever
+    anyone else pressed the button."""
+    first = client.post("/chat", json={"message": "Balance for CUS-0001?",
+                                       "session_id": "bystander"}).json()
+    assert first["step_number"] == 1
+    client.put("/api/_test/defects", json={"defects": "D26"})
+    try:
+        d = client.post("/api/_test/compare",
+                        json={"message": "What is the balance for CUS-0001?"},
+                        headers=_hdr(profile="lesson-01")).json()
+        assert d["clean"]["active_defects"] == []
+        assert d["profile"]["profile"] == "lesson-01"
+        assert d["profile"]["active_defects"] == ["D01", "D02", "D03", "D26"]
+        assert d["clean"]["tools_called"] == ["get_account"]
+        assert client.get("/api/_test/defects").json()["active"] == ["D26"]
+        assert client.get("/health").json()["profile"] == "clean"
+    finally:
+        client.put("/api/_test/defects", json={"defects": None})
+    again = client.post("/chat", json={"message": "Show transactions for ACC-1001",
+                                       "session_id": "bystander"}).json()
+    assert again["step_number"] == 2, "compare must not reset other sessions"
+
+
+def test_series_runs_fresh_sessions_and_counts_the_tools():
+    r = client.post("/api/_test/series",
+                    json={"message": "What is the balance for CUS-0001?", "runs": 3,
+                          "profile": "lesson-01"},
+                    headers=_hdr(profile="clean"))
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["runs"] == 3
+    cur, prof = body["arms"]["current"], body["arms"]["profile"]
+    assert cur["profile"] == "clean" and prof["profile"] == "lesson-01"
+    ids = [x["request_id"] for x in cur["runs"]] + [x["request_id"] for x in prof["runs"]]
+    assert len(set(ids)) == 6
+    assert all(x["step_number"] == 1 for x in cur["runs"])
+    assert cur["tool_counts"] == {"get_account": 3}
+    assert prof["prompt_version"] == "base.v1+D01+D02+D03"
+    capped = client.post("/api/_test/series", json={"message": "hi", "runs": 50}).json()
+    assert capped["runs"] == 5
+    bad = client.post("/api/_test/series", json={"message": "hi", "profile": "lesson-99"})
+    assert bad.status_code == 400
+
+
+def test_series_refuses_a_third_concurrent_run(monkeypatch):
+    from app import main as main_mod
+    assert main_mod._series_slots.acquire(blocking=False)
+    assert main_mod._series_slots.acquire(blocking=False)
+    try:
+        r = client.post("/api/_test/series", json={"message": "hi", "runs": 1})
+        assert r.status_code == 503
+    finally:
+        main_mod._series_slots.release()
+        main_mod._series_slots.release()
+
+
+def test_lock_closes_server_writes_until_the_admin_header(monkeypatch):
+    from app import config as cfg
+    monkeypatch.setattr(cfg, "STAND_LOCK_GLOBAL", True)
+    monkeypatch.setattr(cfg, "STAND_ADMIN_TOKEN", "lecturer-secret")
+    for method, path, body in (("PUT", "/api/_test/profile", {"profile": "clean"}),
+                               ("PUT", "/api/_test/defects", {"defects": None}),
+                               ("POST", "/api/_test/clock", {"now": None}),
+                               ("PUT", "/api/_test/retrieval", {"top_k": 4}),
+                               ("PUT", "/api/_test/summarize_after", {"steps": 8}),
+                               ("POST", "/api/_test/reset", None)):
+        r = client.request(method, path, json=body)
+        assert r.status_code == 403, path
+        assert "X-Stand-Settings" in r.json()["detail"]
+        r = client.request(method, path, json=body, headers={"X-Stand-Admin": "lecturer-secret"})
+        assert r.status_code == 200, (path, r.text)
+        r = client.request(method, path, json=body, headers={"X-Stand-Admin": "wrong"})
+        assert r.status_code == 403, path
+    h = client.get("/health").json()
+    assert h["locked"] is True and h["admin"] is False
+    assert client.get("/health", headers={"X-Stand-Admin": "lecturer-secret"}).json()["admin"]
+    assert client.get("/health", headers=_hdr(profile="lesson-02")).json()["profile"] == "lesson-02"
+    assert client.post("/chat", json={"message": "hi"}).status_code == 200
+
+
+def test_lock_without_a_token_admits_nobody(monkeypatch):
+    from app import config as cfg
+    monkeypatch.setattr(cfg, "STAND_LOCK_GLOBAL", True)
+    monkeypatch.setattr(cfg, "STAND_ADMIN_TOKEN", "")
+    r = client.post("/api/_test/reset", headers={"X-Stand-Admin": ""})
+    assert r.status_code == 403
+
+
+def test_retrieval_trace_carries_the_fragment_text():
+    r = client.post("/chat", json={"message": "What is the fee for a SWIFT transfer?"}).json()
+    tree = client.get(f"/api/_test/traces/{r['request_id']}").json()
+    search = next(c for c in tree["children"] if c["name"] == "tool.search_knowledge_base")
+    frags = search["attributes"]["retrieval.fragments"]
+    assert frags and all(f["text"] for f in frags)
+    assert all(len(f["text"]) <= 160 for f in frags)
+    assert search["attributes"]["retrieval.top_k"] == 4
+
+
+def test_providers_send_temperature_only_when_configured(monkeypatch):
+    from app import config as cfg
+    from app.agent.providers import anthropic_provider, openai_provider
+    monkeypatch.setattr(cfg, "LLM_TEMPERATURE", "")
+    assert anthropic_provider._temperature() == {} and openai_provider._temperature() == {}
+    monkeypatch.setattr(cfg, "LLM_TEMPERATURE", "0")
+    assert anthropic_provider._temperature() == {"temperature": 0.0}
+    assert openai_provider._temperature() == {"temperature": 0.0}

@@ -2,7 +2,7 @@
 import math
 import re
 
-from app import config, defects
+from app import config, defects, runctx
 
 _WORD_RE = re.compile(r"[a-z0-9_]+")
 
@@ -55,14 +55,23 @@ def _index(kind: str) -> list[dict]:
     return _indexes[kind]
 
 
+def requested_index() -> str:
+    return runctx.current().index or config.KB_INDEX_ENV
+
+
+def requested_top_k() -> int:
+    requested = runctx.current().top_k
+    return requested if requested is not None else config.RAG_TOP_K
+
+
 def active_index_name() -> str:
-    if config.KB_INDEX_ENV:
-        return config.KB_INDEX_ENV
+    if requested_index():
+        return requested_index()
     return "kb_broken" if defects.is_on("D16") else "kb_clean"
 
 
 def active_top_k() -> int:
-    return 1 if defects.is_on("D17") else config.RAG_TOP_K
+    return 1 if defects.is_on("D17") else requested_top_k()
 
 
 def _score(query_tokens: list[str], chunk: dict) -> float:

@@ -126,8 +126,10 @@ def _execute_tool(trace: RequestTrace, tc: dict) -> dict:
             s.attributes.update({
                 "retrieval.query": tc["arguments"].get("query"),
                 "retrieval.index": result.get("index"),
+                "retrieval.top_k": result.get("top_k"),
                 "retrieval.fragments": [
-                    {"id": f["id"], "score": f["score"]}
+                    {"id": f["id"], "score": f["score"],
+                     "text": (f.get("text") or "")[:160]}
                     for f in result.get("fragments", [])],
             })
     return result

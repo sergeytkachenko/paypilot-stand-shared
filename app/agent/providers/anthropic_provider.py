@@ -7,6 +7,12 @@ import httpx
 from app import config
 from app.agent.providers.base import ModelResponse, Provider
 
+
+def _temperature() -> dict:
+    if config.LLM_TEMPERATURE == "":
+        return {}
+    return {"temperature": float(config.LLM_TEMPERATURE)}
+
 API_URL = "https://api.anthropic.com/v1/messages"
 DEFAULT_MODEL = "claude-haiku-4-5"
 _RETRY_STATUS = {429, 500, 502, 503, 529}
@@ -57,6 +63,7 @@ class AnthropicProvider(Provider):
         payload = {
             "model": self.model,
             "max_tokens": 1024,
+            **_temperature(),
             "system": system,
             "messages": _to_anthropic(messages),
             "tools": [{"name": t["name"], "description": t["description"],
