@@ -1,4 +1,6 @@
 """Smoke tests over the HTTP surface with the mock provider."""
+import re
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -358,6 +360,47 @@ def test_explain_sends_both_answers_and_tool_diffs_to_the_light_model(monkeypatc
     assert f"<answer_profile>\n{d['profile']['answer']}" in user
     assert "search_knowledge_base(" in user
     assert "D05" in user
+
+
+def test_explain_follows_the_ui_language_on_mock():
+    message = "What is the fee for a SWIFT transfer?"
+    d = _compare_on("lesson-04", message)
+    body = dict(_explain_body(message, d), lang="en")
+    r = client.post("/api/_test/compare/explain", json=body)
+    assert r.status_code == 200
+    assert r.json()["explanation"].startswith("- mock provider:")
+    assert not re.search(r"[а-яіїєґ]", r.json()["explanation"], re.I)
+
+
+def test_explain_asks_the_model_for_the_ui_language(monkeypatch):
+    from app.agent import explain
+    from app.agent.providers.base import ModelResponse
+
+    systems = []
+
+    class Recorder:
+        name = "anthropic"
+        model = "agent-model"
+
+        def complete(self, system, messages, tools):
+            systems.append(system)
+            return ModelResponse(text="- profile named another amount",
+                                 input_tokens=1, output_tokens=1, model=self.model)
+
+    message = "What is the fee for a SWIFT transfer?"
+    d = _compare_on("lesson-04", message)
+    monkeypatch.setattr(explain, "get_provider", Recorder)
+    client.post("/api/_test/compare/explain", json=dict(_explain_body(message, d), lang="en"))
+    client.post("/api/_test/compare/explain", json=_explain_body(message, d))
+    assert "Explain in English" in systems[0] and "profile: ..." in systems[0]
+    assert "Explain in Ukrainian" in systems[1] and "профіль: ..." in systems[1]
+
+
+def test_explain_rejects_an_unknown_language():
+    r = client.post("/api/_test/compare/explain", json={
+        "message": "x", "lang": "de", "clean": {"request_id": "a"},
+        "profile": {"request_id": "b"}})
+    assert r.status_code == 422
 
 
 def test_explain_reports_a_missing_trace():

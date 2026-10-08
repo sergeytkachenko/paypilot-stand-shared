@@ -700,7 +700,9 @@ const I18N = {
     linesFromClean: 'від clean: +{a} / −{d} рядків',
     layerNames: {prompt: 'інструкція', tools: 'інструменти', tool: 'інструменти', rag: 'пошук у базі знань', retrieval: 'пошук у базі знань', memory: 'пам’ять', data: 'дані', policy: 'правила'},
     evQuestion: 'Питання', evAnswer: 'Відповідь', evTrace: 'трейс', evConditions: 'Умови, що різняться', evDiffs: 'Що відрізнялося в інструментах',
-    evNone: 'немає', evRuns: 'прогони', turnsWord: ['хід', 'ходи', 'ходів']
+    evNone: 'немає', evRuns: 'прогони', turnsWord: ['хід', 'ходи', 'ходів'],
+    docTitle: 'PayPilot — навчальний стенд', usageShort: 'вх. {i} / вих. {o} ток.', usageTip: 'токени: вхід {i} · вихід {o}',
+    holdN: 'блокування комплаєнсу: {n}', seedSumTip: 'клієнти · рахунки · транзакції'
   },
   en: {
     appSub: 'training stand', profile: 'Profile', whatDiffers: 'How it differs from clean →',
@@ -820,9 +822,11 @@ const I18N = {
     ovNoLayers: 'This build carries no layer metadata.', ovLessons: 'For lessons', ovClean: 'clean is the baseline: nothing to compare.',
     promptSame: 'The prompt of {p} matches clean.', sameLines: '… {n} identical lines', vsClean: '{p} vs clean',
     linesFromClean: 'from clean: +{a} / −{d} lines',
-    layerNames: {},
+    layerNames: {prompt: 'instructions', tools: 'tools', tool: 'tools', rag: 'knowledge base search', retrieval: 'knowledge base search', memory: 'memory', data: 'data', policy: 'rules'},
     evQuestion: 'Question', evAnswer: 'Answer', evTrace: 'trace', evConditions: 'Conditions that differ', evDiffs: 'Tool result differences',
-    evNone: 'none', evRuns: 'runs', turnsWord: ['turn', 'turns', 'turns']
+    evNone: 'none', evRuns: 'runs', turnsWord: ['turn', 'turns', 'turns'],
+    docTitle: 'PayPilot — training stand', usageShort: 'in {i} / out {o} tok', usageTip: 'tokens: in {i} · out {o}',
+    holdN: 'compliance hold: {n}', seedSumTip: 'customers · accounts · transactions'
   }
 };
 
@@ -830,7 +834,7 @@ const $ = function(id){ return document.getElementById(id); };
 let sessionId = null, lastTrace = null, lastStep = 0, currentProfile = '—', customerEpoch = 0;
 let extraDefects = new Set(), profileDefects = new Set(), defectDetails = {};
 let standLocked = false, isAdmin = false, health = null, knownProfiles = [];
-let customers = [], accountsOf = {}, reference = null, standClock = '';
+let customers = [], accountsOf = {}, seedStats = null, reference = null, standClock = '';
 let lastCompareTier = '', activeCount = -1;
 
 let ALL_IDS = [];
@@ -1053,7 +1057,7 @@ function metaLine(side, onTrace){
   const cost = u.cost_usd == null ? t('priceUnknown') : '≈ ' + fmtUsd(u.cost_usd);
   const first = el('span', {text: cost + (secs ? ' · ' + secs : '')});
   if(u.cost_usd == null) first.title = t('priceUnknownTip');
-  m.title = 'tokens in ' + u.input_tokens + ' · out ' + u.output_tokens + ' · ' + t('promptV') + ' ' +
+  m.title = t('usageTip', {i: u.input_tokens, o: u.output_tokens}) + ' · ' + t('promptV') + ' ' +
     side.prompt_version + ' · ' + t('step') + ' ' + side.step_number + ' · ' + t('model') + ' ' + (side.model || u.model || '—');
   m.appendChild(first);
   m.appendChild(el('span', {text: '·'}));
@@ -1109,6 +1113,8 @@ let spentUsd = 0, spentUnpriced = 0;
 function fmtUsd(c){
   return '$' + (c < 0.01 ? c.toFixed(4) : c.toFixed(3));
 }
+function locale(){ return ui.lang === 'en' ? 'en-US' : 'uk-UA'; }
+function usageShort(u){ return t('usageShort', {i: u.input_tokens, o: u.output_tokens}); }
 function costPart(c){
   return c == null ? '' : ' · ≈ ' + fmtUsd(c);
 }
@@ -1290,7 +1296,7 @@ const KIND_KEYS = {receives: 'x5KindReceives', spread: 'x5KindSpread', dailyLeft
 
 function fmtValue(v){
   const pct = v.unit === '%';
-  const n = Number(v.value).toLocaleString('en-US', {minimumFractionDigits: pct ? 0 : 2, maximumFractionDigits: 2});
+  const n = Number(v.value).toLocaleString(locale(), {minimumFractionDigits: pct ? 0 : 2, maximumFractionDigits: 2});
   return pct ? n + '%' : n + ' ' + v.unit;
 }
 
@@ -1476,8 +1482,7 @@ async function series(question){
     const metas = armKeys.map(function(a){
       const arm = arms[a];
       addSpend(arm.usage.cost_usd);
-      return armLabel(arm) + ' · in ' + arm.usage.input_tokens + ' / out ' + arm.usage.output_tokens +
-        ' tok' + costPart(arm.usage.cost_usd) + ' · ' + (Math.round(arm.elapsed_ms) / 1000).toFixed(1) +
+      return armLabel(arm) + ' · ' + usageShort(arm.usage) + costPart(arm.usage.cost_usd) + ' · ' + (Math.round(arm.elapsed_ms) / 1000).toFixed(1) +
         ' ' + t('sec') + ' · ' + t('promptV') + ' ' + arm.prompt_version;
     });
     const meta = el('div', {cls: 'x5-meta', hidden: true}, metas.map(function(line){ return el('div', {text: line}); }));
@@ -1682,15 +1687,14 @@ async function showExplanation(box, message, d){
   box.appendChild(body);
   try{
     const r = await api('/api/_test/compare/explain', jpost({
-      message: message,
+      message: message, lang: ui.lang === 'en' ? 'en' : 'uk',
       clean: {request_id: d.clean.request_id, answer: d.clean.answer || ''},
       profile: {request_id: d.profile.request_id, answer: d.profile.answer || ''}}));
     body.textContent = '';
     renderRich(r.explanation || t('explainNone'), body);
     const src = el('div', {cls: 'src'});
     src.textContent = (r.model || '—') +
-      (r.usage ? ' · in ' + r.usage.input_tokens + ' / out ' + r.usage.output_tokens + ' tok' +
-                 costPart(r.usage.cost_usd) : '') + ' — ' + t('explainNote');
+      (r.usage ? ' · ' + usageShort(r.usage) + costPart(r.usage.cost_usd) : '') + ' — ' + t('explainNote');
     box.appendChild(src);
     if(r.usage) addSpend(r.usage.cost_usd);
   }catch(e){
@@ -2231,16 +2235,22 @@ async function loadSeed(){
       if(!accountsOf[a.customer_id]) accountsOf[a.customer_id] = [];
       accountsOf[a.customer_id].push(a);
     });
-    const tiers = {};
-    s.customers.forEach(function(c){ tiers[c.tier] = (tiers[c.tier] || 0) + 1; });
-    const holds = s.customers.filter(function(c){ return c.compliance_hold; }).length;
-    $('seedSum').textContent = s.customers.length + ' · ' + s.accounts.length + ' · ' + s.transaction_count + ' — ' +
-      Object.keys(tiers).sort().map(function(k){ return k + ' ×' + tiers[k]; }).join(', ') +
-      (holds ? ' · compliance hold: ' + holds : '');
-    $('seedSum').title = 'customers · accounts · transactions';
+    seedStats = {customers: s.customers.length, accounts: s.accounts.length, transactions: s.transaction_count};
+    renderSeedSum();
     if(ui.customer && !customers.some(function(c){ return c.id === ui.customer; })){ ui.customer = ''; saveUi(); }
     renderCustomers();
   }catch(e){ $('seed').textContent = t('unavailable'); }
+}
+
+function renderSeedSum(){
+  if(!seedStats) return;
+  const tiers = {};
+  customers.forEach(function(c){ tiers[c.tier] = (tiers[c.tier] || 0) + 1; });
+  const holds = customers.filter(function(c){ return c.compliance_hold; }).length;
+  $('seedSum').textContent = seedStats.customers + ' · ' + seedStats.accounts + ' · ' + seedStats.transactions + ' — ' +
+    Object.keys(tiers).sort().map(function(k){ return k + ' ×' + tiers[k]; }).join(', ') +
+    (holds ? ' · ' + t('holdN', {n: holds}) : '');
+  $('seedSum').title = t('seedSumTip');
 }
 
 function customerTier(){
@@ -2308,7 +2318,7 @@ function renderReference(hit){
   if(!r){ box.textContent = t('loading'); return; }
   box.textContent = '';
   const tiers = Object.keys(r.FX_SPREAD_PCT).sort();
-  const num = function(v){ return Number(v).toLocaleString(ui.lang === 'en' ? 'en-US' : 'uk-UA'); };
+  const num = function(v){ return Number(v).toLocaleString(locale()); };
   box.appendChild(refTable(t('refFx'), [t('tier'), t('spread'), t('freeFx')],
     tiers.map(function(k){ return [k, String(r.FX_SPREAD_PCT[k]), num(r.FX_FREE_MONTHLY_ALLOWANCE_EUR[k])]; }), hit));
   box.appendChild(refTable(t('refLimits'), [t('tier'), t('perDay'), t('perMonth')],
@@ -2384,6 +2394,7 @@ function toggleProjector(){ ui.projector = !ui.projector; saveUi(); applyTheme()
 
 function applyLang(){
   document.documentElement.lang = ui.lang;
+  document.title = t('docTitle');
   document.querySelectorAll('[data-i18n]').forEach(function(n){ n.textContent = t(n.getAttribute('data-i18n')); });
   $('langUk').setAttribute('aria-pressed', String(ui.lang === 'uk'));
   $('langEn').setAttribute('aria-pressed', String(ui.lang === 'en'));
@@ -2394,6 +2405,7 @@ function applyLang(){
   renderProfileList();
   renderSpend();
   renderCustomers();
+  renderSeedSum();
   if(reference) renderReference('');
   if(lastTrace) renderTree(lastTrace);
   renderComposerHint();
