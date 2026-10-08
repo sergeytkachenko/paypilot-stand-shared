@@ -827,7 +827,7 @@ const I18N = {
 };
 
 const $ = function(id){ return document.getElementById(id); };
-let sessionId = null, lastTrace = null, lastStep = 0, currentProfile = '—';
+let sessionId = null, lastTrace = null, lastStep = 0, currentProfile = '—', customerEpoch = 0;
 let extraDefects = new Set(), profileDefects = new Set(), defectDetails = {};
 let standLocked = false, isAdmin = false, health = null, knownProfiles = [];
 let customers = [], accountsOf = {}, reference = null, standClock = '';
@@ -1080,8 +1080,9 @@ async function send(retryText){
   const controller = new AbortController();
   const stopWaiting = startWaiting(thinking, controller);
   try{
+    const epoch = customerEpoch;
     const res = await api('/chat', Object.assign(jpost(withCustomer({message: composed.message, session_id: sessionId})), {signal: controller.signal}));
-    if((ui.customer || '') === composed.cust){
+    if(epoch === customerEpoch){
       sessionId = res.session_id;
       lastStep = res.step_number;
     }
@@ -2268,7 +2269,7 @@ function renderCustomers(){
 
 function pickCustomer(id){
   const switched = ui.customer !== id;
-  if(switched){ sessionId = null; lastStep = 0; }
+  if(switched){ sessionId = null; lastStep = 0; customerEpoch += 1; }
   ui.customer = id;
   saveUi();
   renderCustomers();

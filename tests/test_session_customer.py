@@ -120,4 +120,5 @@ def test_ui_signs_the_customer_in_instead_of_writing_it_into_the_question():
     ui = (Path(__file__).resolve().parents[1] / "app" / "static" / "index.html").read_text(encoding="utf-8")
     assert "'I am ' + cust" not in ui and "'Я ' + cust" not in ui
     assert ui.count("withCustomer(") == 4
-    assert "if(switched){ sessionId = null; lastStep = 0; }" in ui
+    assert "if(switched){ sessionId = null; lastStep = 0; customerEpoch += 1; }" in ui
+    assert "if(epoch === customerEpoch){" in ui
