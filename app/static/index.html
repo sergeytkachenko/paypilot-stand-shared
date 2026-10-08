@@ -616,7 +616,7 @@ const I18N = {
     explainNote: 'Це думка моделі, а не перевірка. Звіряйте з підсвіткою й списком «Що відрізнялося».',
     explainNone: '(модель нічого не відповіла)', explainFail: 'Пояснення недоступне: {m}. Різниця вище показана без нього.',
     rawPayloads: 'Сирі результати інструментів', noTools: 'інструменти не викликались',
-    cProfile: 'профіль', cDefects: 'дефекти', cPrompt: 'промпт', cSession: 'сесія', cClock: 'час стенду', cIndex: 'індекс пошуку', cModel: 'модель',
+    cProfile: 'профіль', cDefects: 'дефекти', cPrompt: 'промпт', cSession: 'сесія', cClock: 'час стенду', cIndex: 'індекс пошуку', cModel: 'модель', cRouter: 'маршрутизатор', cRouterNone: 'немає',
     newNoHistory: 'нова, без історії чату', eq: '= однаково', neq: '≠ різниться', comparing: 'порівнюю…',
     x5Title: 'те саме питання {n} разів · кожен прогін — нова сесія', x5Running: 'ганяю {n} разів… це до {m} викликів моделі, зачекайте',
     x5Same: '{k} з {n}', x5SameSub: 'прогонів дали ту саму відповідь', x5Variants: 'Варіанти відповіді', x5InAll: '— в усіх {n} прогонах',
@@ -731,7 +731,7 @@ const I18N = {
     explainNote: 'This is the model’s opinion, not a check. Verify it against the highlights and “What differed”.',
     explainNone: '(the model returned nothing)', explainFail: 'Explanation unavailable: {m}. The difference above is shown without it.',
     rawPayloads: 'Raw tool payloads', noTools: 'no tools were called',
-    cProfile: 'profile', cDefects: 'defects', cPrompt: 'prompt', cSession: 'session', cClock: 'stand clock', cIndex: 'search index', cModel: 'model',
+    cProfile: 'profile', cDefects: 'defects', cPrompt: 'prompt', cSession: 'session', cClock: 'stand clock', cIndex: 'search index', cModel: 'model', cRouter: 'router', cRouterNone: 'none',
     newNoHistory: 'new, no chat history', eq: '= same', neq: '≠ differs', comparing: 'comparing…',
     x5Title: 'the same question {n} times · every run is a new session', x5Running: 'running {n} times… up to {m} model calls, please wait',
     x5Same: '{k} of {n}', x5SameSub: 'runs gave the same answer', x5Variants: 'Answer variants', x5InAll: '— in all {n} runs',
@@ -1115,6 +1115,7 @@ function conditionRows(d){
     [t('cClock'), fmtClock(c.clock), fmtClock(p.clock)],
     [t('cIndex'), retrievalOf(c), retrievalOf(p)],
     [t('cModel'), c.model || '—', p.model || '—'],
+    [t('cRouter'), c.router || t('cRouterNone'), p.router || t('cRouterNone')],
   ];
 }
 

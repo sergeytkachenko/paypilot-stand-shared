@@ -8,8 +8,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 from app import clock, config, db, defects, otel, runctx, tracing
-from app.agent import explain, loop, pricing, prompt, summarize, tools
-from app.engines import policy
+from app.agent import explain, loop, pricing, prompt, router, summarize, tools
+from app.engines import reference
 
 defects.validate_startup()
 db.ensure_seeded()
@@ -79,6 +79,7 @@ def _arm_conditions() -> dict:
         "retrieval": {"index": retriever.active_index_name(),
                       "top_k": retriever.active_top_k()},
         "clock": clock.describe()["now"],
+        "router": router.describe() if router.active_for(defects.current_profile()) else "",
     }
 
 
@@ -216,6 +217,7 @@ def health(request: Request):
             "startup_profile": config.PROFILE,
             "active_defects": sorted(defects.active()),
             "provider": config.LLM_PROVIDER,
+            "router": router.describe(),
             "otlp": bool(os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")),
             "scope": runctx.scope(),
             "request_settings": runctx.current().as_dict(),
@@ -272,18 +274,9 @@ def test_seed():
             "transaction_count": len(db.table_dump("transactions"))}
 
 
-REFERENCE_TABLES = ("FX_SPREAD_PCT", "FX_FREE_MONTHLY_ALLOWANCE_EUR",
-                    "RATES_TO_EUR", "TRANSFER_FEES", "DAILY_LIMIT_EUR",
-                    "MONTHLY_LIMIT_EUR", "DISPUTE_WINDOWS_DAYS")
-
-
 @app.get("/api/_test/reference")
 def test_reference():
-    out = {name: getattr(policy, name) for name in REFERENCE_TABLES}
-    out["TRANSFER_FEES"] = {rail: {"flat_fee_eur": flat, "percent_fee": pct}
-                            for rail, (flat, pct) in policy.TRANSFER_FEES.items()}
-    out["source"] = "app/engines/policy.py"
-    return out
+    return reference.tables()
 
 
 @app.get("/api/_test/clock")

@@ -6,6 +6,8 @@ PRICES_CHECKED_ON = "2026-10-08"
 PRICES_PER_MTOK_USD = {
     "claude-haiku-4-5": (1.0, 5.0),
     "claude-haiku-5-5": (0.10, 0.50),
+    "jev-latest": (0.042, 0.0),
+    "jev-1.13.0": (0.042, 0.0),
 }
 
 LONG_PROMPT_PRICES_PER_MTOK_USD = {
