@@ -6,267 +6,777 @@
 <title>PayPilot — навчальний стенд</title>
 <style>
   :root{
-    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
-    --text:#e6e8ec; --muted:#9aa3b2; --accent:#4f9cf9; --warn:#f2b45c;
-    --bad:#e5646d; --good:#5ec38a; --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --fs-xs:12px; --fs-sm:13px; --fs-body:15px; --fs-md:17px; --fs-lg:20px; --fs-xl:26px;
+    --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px;
+    --r-sm:6px; --r:10px; --r-lg:14px;
+    --bg:#f5f9fe; --surface:#ffffff; --surface-2:#eaf3fc; --line:#dce7f2; --line-strong:#bfd0e3;
+    --text:#1a2530; --muted:#4b5a6b; --accent:#283593; --on-accent:#ffffff; --accent-bg:#e8eaf6;
+    --focus-ring:rgba(40,53,147,.28); --user-bg:#e3f2fd;
+    --left:#1b5e96; --left-bg:#e3f2fd; --left-line:#aed0ee;
+    --right:#7b2c8f; --right-bg:#f3e5f5; --right-line:#dbb6e4;
+    --add:#1b6b47; --add-bg:#d9f2e6; --del:#a23434; --del-bg:#fde3e2;
+    --warn:#855000; --warn-bg:#fff3d9; --warn-line:#efcf8c;
+    --err:#b0283a; --err-bg:#fde4e7; --err-line:#f2b3bc; --ok:#1d7748; --ok-bg:#dcf4e7;
+    --shadow:0 12px 32px rgba(20,30,60,.18);
+    color-scheme:light;
+  }
+  :root[data-theme="dark"]{
+    --bg:#17161f; --surface:#1f1e2a; --surface-2:#2a2836; --line:#34323f; --line-strong:#45425a;
+    --text:#ecebf3; --muted:#aeaac0; --accent:#b7a9ff; --on-accent:#1a1530; --accent-bg:#2c2748;
+    --focus-ring:rgba(183,169,255,.45); --user-bg:#26324a;
+    --left:#9ccbf5; --left-bg:#1b2a3c; --left-line:#34557a;
+    --right:#f5a9c8; --right-bg:#3a1f2d; --right-line:#7a4560;
+    --add:#a8ecc8; --add-bg:#1d4434; --del:#ffb5b0; --del-bg:#4a2424;
+    --warn:#f7cf8a; --warn-bg:#352b17; --warn-line:#6e5a2e;
+    --err:#ffa3ad; --err-bg:#3d1f24; --err-line:#7d3a44; --ok:#9be3bd; --ok-bg:#1a3b2e;
+    --shadow:0 12px 32px rgba(0,0,0,.45);
+    color-scheme:dark;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#17161f; --surface:#1f1e2a; --surface-2:#2a2836; --line:#34323f; --line-strong:#45425a;
+      --text:#ecebf3; --muted:#aeaac0; --accent:#b7a9ff; --on-accent:#1a1530; --accent-bg:#2c2748;
+      --focus-ring:rgba(183,169,255,.45); --user-bg:#26324a;
+      --left:#9ccbf5; --left-bg:#1b2a3c; --left-line:#34557a;
+      --right:#f5a9c8; --right-bg:#3a1f2d; --right-line:#7a4560;
+      --add:#a8ecc8; --add-bg:#1d4434; --del:#ffb5b0; --del-bg:#4a2424;
+      --warn:#f7cf8a; --warn-bg:#352b17; --warn-line:#6e5a2e;
+      --err:#ffa3ad; --err-bg:#3d1f24; --err-line:#7d3a44; --ok:#9be3bd; --ok-bg:#1a3b2e;
+      --shadow:0 12px 32px rgba(0,0,0,.45);
+      color-scheme:dark;
+    }
+  }
+  :root[data-scale="projector"]{
+    --fs-xs:15px; --fs-sm:16px; --fs-body:19px; --fs-md:22px; --fs-lg:26px; --fs-xl:32px;
   }
   *{box-sizing:border-box}
-  body{margin:0;height:100vh;display:flex;background:var(--bg);color:var(--text);
-       font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-  .chat{flex:1;display:flex;flex-direction:column;min-width:0}
-  .chat-head{padding:12px 18px;border-bottom:1px solid var(--line);
-             display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .chat-head h1{font-size:15px;margin:0;font-weight:600}
-  .pill{font:11px var(--mono);padding:3px 8px;border-radius:99px;
-        background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
-  .pill.on{color:var(--warn);border-color:#4a3a1e}
-  .pill.clean{color:var(--good);border-color:#1e4a33}
-  .msgs{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px}
-  /* 760px is wider than a 768px screen: the bubble forced the whole page
-     to scroll sideways on a tablet. */
-  .msg{max-width:min(760px, 100%);padding:10px 14px;border-radius:10px;
-       white-space:pre-wrap;
-       word-wrap:break-word}
-  .msg code{font:12px var(--mono);background:#0f1622;padding:1px 4px;
-            border-radius:4px}
-  .msg.user{align-self:flex-end;background:#24405f}
-  .msg.bot{align-self:flex-start;background:var(--panel);border:1px solid var(--line)}
-  .msg.sys{align-self:center;color:var(--muted);font-size:12px;background:none;
-           border:1px dashed var(--line)}
-  .msg.err{align-self:center;font-size:12px;background:#3a1d1d;color:#ffb4b4;
-           border:1px solid #7a3a3a}
-  .meta{margin-top:6px;font:11px var(--mono);color:var(--muted);display:flex;
-        gap:10px;flex-wrap:wrap}
-  .meta a{color:var(--accent);cursor:pointer;text-decoration:none}
-  .composer{display:flex;gap:8px;padding:14px 18px;border-top:1px solid var(--line);
-            flex-wrap:wrap}
-  .composer input{flex:1;min-width:180px;background:var(--panel);
-                  border:1px solid var(--line);
-                  color:var(--text);padding:10px 12px;border-radius:8px;font:inherit}
-  .composer input:focus{outline:none;border-color:var(--accent)}
-  button{background:var(--panel2);color:var(--text);border:1px solid var(--line);
-         padding:8px 12px;border-radius:8px;cursor:pointer;font:inherit}
+  html,body{height:100%}
+  body{margin:0;display:flex;flex-direction:column;background:var(--bg);color:var(--text);
+       font:var(--fs-body)/1.5 var(--sans)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;box-shadow:0 0 0 4px var(--focus-ring)}
+  button{font:var(--fs-sm) var(--sans);color:var(--text);background:var(--surface-2);
+         border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:7px 12px;cursor:pointer}
   button:hover{border-color:var(--accent)}
-  button.primary{background:var(--accent);color:#08111e;border-color:var(--accent);
-                 font-weight:600}
-  button:disabled{opacity:.5;cursor:default}
-  .side{width:400px;border-left:1px solid var(--line);background:var(--panel);
-        overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:18px}
-  .side h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;
-           color:var(--muted);margin:0 0 8px}
+  button:disabled,button[aria-disabled="true"]{opacity:.5;cursor:default}
+  button.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:600}
+  button.link{background:none;border:none;padding:0;color:var(--accent);text-decoration:underline;
+              text-underline-offset:3px}
+  button.quiet{background:none;border:1px solid var(--line-strong);color:var(--muted);padding:0 6px;
+               border-radius:4px;font:inherit}
+  a{color:var(--accent)}
+  code,.mono{font-family:var(--mono)}
+  code{font-size:.92em;background:var(--surface-2);padding:0 4px;border-radius:4px}
+  input,select{font:var(--fs-body) var(--sans);color:var(--text);background:var(--bg);
+               border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:7px 9px;min-width:0}
+  .muted{color:var(--muted)}
+  .grow{flex:1}
+  .caret{color:var(--muted);font-size:10px}
+  .pop{position:absolute;z-index:20;background:var(--surface-2);border:1px solid var(--line-strong);
+       border-radius:var(--r);box-shadow:var(--shadow)}
+  [hidden]{display:none !important}
+
+  .top{position:relative;z-index:10;background:var(--surface);border-bottom:1px solid var(--line);
+       display:flex;align-items:center;gap:var(--s4);padding:var(--s2) var(--s5);min-height:64px;flex-wrap:wrap}
+  .brand{display:flex;flex-direction:column;line-height:1.15;flex:none}
+  .brand-name{font-size:var(--fs-lg);font-weight:700;letter-spacing:-.01em}
+  .brand-sub{font-size:var(--fs-xs);color:var(--muted)}
+  .vsep{width:1px;align-self:stretch;background:var(--line);margin:4px 0}
+  .prof{display:flex;align-items:center;gap:var(--s3);min-width:0;flex:0 1 auto}
+  .prof-pick{position:relative;display:flex;flex-direction:column;gap:2px;flex:none}
+  .lbl{font-size:var(--fs-xs);color:var(--muted)}
+  #profileBtn{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:150px;
+              white-space:nowrap;padding:6px 10px;font:600 var(--fs-md)/1.2 var(--mono)}
+  .prof-desc{display:flex;flex-direction:column;gap:2px;max-width:340px;min-width:0;font-size:var(--fs-sm);line-height:1.35}
+  .prof-desc a{text-decoration:none}
+  #profileList{top:calc(100% + 6px);left:0;width:380px;max-height:70vh;overflow:auto;padding:4px 0}
+  .opt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;background:none;
+       border:none;border-radius:0;padding:8px 14px;text-align:left}
+  .opt:hover,.opt[aria-selected="true"]{background:var(--accent-bg)}
+  .opt b{font:600 var(--fs-sm) var(--mono)}
+  .opt span{font-size:var(--fs-xs);color:var(--muted)}
+  .chip-warn{display:flex;align-items:center;gap:8px;background:var(--warn-bg);border:1px solid var(--warn-line);
+             color:var(--warn);border-radius:99px;padding:3px 4px 3px 10px;font-size:var(--fs-sm);flex:none}
+  .chip-warn button{background:var(--warn);color:var(--warn-bg);border:none;border-radius:99px;padding:3px 10px;
+                    font:600 var(--fs-xs) var(--sans)}
+  .bang{width:16px;height:16px;border-radius:50%;background:var(--warn);color:var(--warn-bg);display:grid;
+        place-items:center;font:700 11px var(--sans);flex:none}
+  .spend{font:var(--fs-sm) var(--mono);color:var(--muted);border-bottom:1px dotted var(--line-strong);cursor:help;flex:none}
+  .menu-wrap{position:relative;flex:none}
+  #menuBtn{display:flex;align-items:center;gap:8px}
+  .menu{right:0;top:calc(100% + 6px);width:330px;padding:6px 0;display:flex;flex-direction:column}
+  .mi{display:flex;align-items:center;justify-content:space-between;gap:10px;background:none;border:none;
+      border-radius:0;padding:9px 14px;text-align:left;width:100%;color:var(--text);text-decoration:none;font-size:var(--fs-sm)}
+  button.mi:hover,a.mi:hover{background:var(--accent-bg)}
+  .mi small{display:block;color:var(--muted);font-size:var(--fs-xs)}
+  .msep{height:1px;background:var(--line);margin:6px 0}
+  .seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:2px}
+  .seg button{background:transparent;border:none;border-radius:4px;padding:4px 10px;font:600 var(--fs-xs) var(--sans);color:var(--muted)}
+  .seg button[aria-pressed="true"]{background:var(--surface-2);color:var(--text)}
+  .badge{background:var(--warn);color:var(--warn-bg);border-radius:99px;padding:0 7px;font:600 var(--fs-xs) var(--mono)}
+  .switch{width:32px;height:18px;border-radius:99px;background:var(--line-strong);position:relative;flex:none;display:inline-block}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .15s}
+  [aria-checked="true"] .switch,[aria-pressed="true"] .switch{background:var(--accent)}
+  [aria-checked="true"] .switch::after,[aria-pressed="true"] .switch::after{left:16px}
+  .lect{right:var(--s5);top:calc(100% - 4px);width:360px;padding:var(--s4);display:flex;flex-direction:column;gap:var(--s3)}
+  .lect h3{margin:0;font-size:var(--fs-md)}
+  .danger{display:flex;flex-direction:column;gap:4px;padding:var(--s3);border:1px solid var(--err-line);
+          border-radius:var(--r-sm);background:var(--err-bg);color:var(--err);font-size:var(--fs-xs)}
+  .danger button{align-self:flex-start;background:var(--err);color:var(--err-bg);border:none;font-weight:600}
+
+  .body{flex:1;display:flex;min-height:0}
+  .chat{flex:1;display:flex;flex-direction:column;min-width:0}
+  .scroller{flex:1;overflow-y:auto}
+  .msgs{max-width:1100px;margin:0 auto;padding:var(--s5);display:flex;flex-direction:column;gap:var(--s4)}
+  .msg{max-width:min(760px, 100%);padding:10px 14px;border-radius:var(--r);white-space:pre-wrap;
+       word-wrap:break-word;overflow-wrap:anywhere}
+  .msg.user{align-self:flex-end;background:var(--user-bg)}
+  .msg.bot{align-self:flex-start;background:var(--surface);border:1px solid var(--line)}
+  .msg.sys{align-self:center;color:var(--muted);font-size:var(--fs-sm);background:none;border:1px dashed var(--line-strong)}
+  .msg.err{align-self:center;font-size:var(--fs-sm);background:var(--err-bg);color:var(--err);border:1px solid var(--err-line)}
+  .cust-tag{display:inline-block;font:var(--fs-xs) var(--mono);background:var(--surface);border:1px solid var(--line);
+            color:var(--muted);border-radius:4px;padding:0 6px;margin-right:8px;vertical-align:1px}
+  .meta{margin-top:6px;font:var(--fs-xs) var(--mono);color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .meta a{color:var(--accent);cursor:pointer;text-decoration:none}
+  .wait{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:var(--fs-sm)}
+  .dots{display:inline-flex;gap:3px}
+  .dots i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite}
+  .dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+  .stuck{display:flex;flex-direction:column;gap:6px;margin-top:8px;padding:var(--s3);border:1px solid var(--warn-line);
+         background:var(--warn-bg);color:var(--warn);border-radius:var(--r-sm);font-size:var(--fs-sm);white-space:normal}
+  .alert{align-self:stretch;max-width:760px;display:flex;flex-direction:column;gap:6px;padding:var(--s3) var(--s4);
+         border:1px solid var(--err-line);background:var(--err-bg);color:var(--err);border-radius:var(--r);white-space:normal;font-size:var(--fs-sm)}
+  .alert b{font-size:var(--fs-body)}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  select,input[type=text]{background:var(--panel2);border:1px solid var(--line);
-    color:var(--text);padding:7px 9px;border-radius:7px;font:inherit;flex:1;min-width:0}
-  .defects{display:flex;flex-wrap:wrap;gap:6px}
-  .dchip{font:11px var(--mono);padding:4px 7px;border-radius:6px;cursor:pointer;
-         background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
-  .dchip.active{background:#3a2c14;border-color:var(--warn);color:var(--warn)}
-  .dchip.profile{background:#2a1f38;border-color:#6b4ba8;color:#c4a5f0;cursor:default}
-  .tree{font:12px var(--mono);white-space:pre;overflow-x:auto;color:var(--muted)}
-  #promptBox{max-height:260px;overflow:auto;background:var(--panel2);
-             border:1px solid var(--line);border-radius:8px;padding:10px;
-             font:11px var(--mono);white-space:pre-wrap;margin-top:8px}
-  .tree .sp{cursor:pointer;color:var(--text)}
-  .tree .sp:hover{color:var(--accent)}
-  .tree .tool{color:var(--warn)} .tree .llm{color:var(--accent)}
-  .attrs{background:var(--panel2);border:1px solid var(--line);border-radius:8px;
-         padding:10px;font:11px var(--mono);white-space:pre-wrap;word-break:break-word;
-         max-height:280px;overflow-y:auto;color:var(--muted)}
-  .hint{font-size:12px;color:var(--muted)}
-  .seed{font:11px var(--mono);color:var(--muted);line-height:1.7}
-  .seed b{color:var(--text);font-weight:600}
-  .err{color:var(--bad)}
-  .pdiff{grid-column:1/-1;margin-top:10px;padding:8px 10px;border-radius:8px;
-         background:#2a1f14;border:1px solid #6a5228;color:#f5d9a8;
-         font:11px var(--mono);white-space:pre-wrap;word-break:break-word}
-  .pdiff strong{display:block;margin-bottom:4px;color:var(--warn)}
-  .cmp{align-self:stretch;max-width:none;display:grid;grid-template-columns:1fr 1fr;
-       gap:12px;background:none;border:none;padding:0}
-  .cmp .col{background:var(--panel);border:1px solid var(--line);border-radius:10px;
-            padding:12px;white-space:pre-wrap}
-  .cmp .col.dirty{border-color:#4a3a1e}
-  .cmp h3{margin:0 0 8px;font:11px var(--mono);letter-spacing:.05em;color:var(--muted)}
-  .cmp .col.dirty h3{color:var(--warn)}
-  .cond{grid-column:1/-1;width:100%;border-collapse:collapse;font:11px var(--mono);
-        background:var(--panel);border:1px solid var(--line);border-radius:10px}
-  .cond th,.cond td{padding:5px 10px;text-align:left;vertical-align:top;
-        border-bottom:1px solid var(--line);color:var(--muted);white-space:normal}
-  .cond th{font-weight:600;color:var(--text)}
+
+  .empty{margin:var(--s7) auto;max-width:720px;display:flex;flex-direction:column;gap:var(--s3)}
+  .empty h1{margin:0;font-size:var(--fs-xl);line-height:1.25;letter-spacing:-.01em}
+  .empty p{margin:0;color:var(--muted)}
+  .examples{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:var(--s2)}
+  .examples button{background:var(--surface);font-family:var(--mono)}
+
+  .composer{border-top:1px solid var(--line);background:var(--surface);position:relative;z-index:5}
+  .composer-in{max-width:1100px;margin:0 auto;padding:var(--s3) var(--s5) var(--s4);display:flex;flex-direction:column;gap:var(--s3)}
+  .inrow{display:flex;align-items:center;gap:var(--s2);background:var(--bg);border:1px solid var(--line-strong);
+         border-radius:var(--r);padding:6px 6px 6px 8px;min-height:48px}
+  .inrow:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--focus-ring)}
+  .inrow input{flex:1;border:none;background:transparent;padding:6px 4px;outline:none;box-shadow:none}
+  .cust-wrap{position:relative;flex:none}
+  .cust{display:flex;align-items:center;gap:6px;padding:4px 8px;white-space:nowrap}
+  .cust .b{font-weight:600}
+  .cust-pop{bottom:calc(100% + 8px);left:0;width:520px;max-width:calc(100vw - 32px);overflow:hidden}
+  .cust-head{padding:var(--s3) var(--s4);border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+  .cust-list{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;font:var(--fs-sm) var(--mono);
+             padding:4px 0;max-height:46vh;overflow:auto}
+  .cust-row{display:contents;cursor:pointer}
+  .cust-row>span{padding:6px var(--s4) 6px 0}
+  .cust-row>span:first-child{padding-left:var(--s4);font-weight:600}
+  .cust-row:hover>span,.cust-row[aria-selected="true"]>span{background:var(--accent-bg)}
+  .actrow{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
+  #cmpBtn{padding:9px 20px;font-size:var(--fs-body)}
+  .pair{display:flex;align-items:center;gap:6px;font:600 var(--fs-sm) var(--mono)}
+  .tag-l{background:var(--left-bg);color:var(--left);border:1px solid var(--left-line);border-radius:var(--r-sm);padding:1px 8px}
+  .tag-r{background:var(--right-bg);color:var(--right);border:1px solid var(--right-line);border-radius:var(--r-sm);padding:1px 8px}
+  .cap{font-size:var(--fs-xs);color:var(--muted)}
+  .warnline{display:flex;align-items:center;gap:8px;color:var(--warn);font-size:var(--fs-sm)}
+
+  .card{align-self:stretch;max-width:none;background:var(--surface);border:1px solid var(--line-strong);
+        border-radius:var(--r-lg);overflow:hidden;white-space:normal;padding:0}
+  .card-head{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s4);flex-wrap:wrap}
+  .card-head h3{margin:0;display:flex;align-items:center;gap:var(--s2);font-size:var(--fs-md);white-space:nowrap}
+  .verdict{display:flex;align-items:flex-start;gap:var(--s3);padding:0 var(--s4) var(--s3);flex-wrap:wrap}
+  .verdict p{margin:0;flex:1;min-width:220px;font-size:var(--fs-md);line-height:1.45;font-weight:500}
+  .vpill{flex:none;margin-top:3px;font:600 var(--fs-xs) var(--sans);text-transform:uppercase;letter-spacing:.05em;
+         border-radius:99px;padding:2px 10px;border:1px solid var(--line-strong);background:var(--surface-2);color:var(--muted)}
+  .vpill.diff{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-line)}
+  .vpill.wait{opacity:.7}
+  .pdiff{border-top:1px solid var(--line);padding:var(--s3) var(--s4);display:flex;flex-direction:column;gap:var(--s2)}
+  .pdiff strong{font-size:var(--fs-sm)}
+  .dgrid{display:grid;grid-template-columns:minmax(160px,auto) auto auto auto minmax(0,1fr);column-gap:var(--s3);row-gap:6px;
+         align-items:center;font:var(--fs-sm) var(--mono)}
+  .dgrid>span{overflow-wrap:anywhere}
+  .vl{justify-self:start;background:var(--left-bg);color:var(--left);border-radius:4px;padding:1px 8px}
+  .vr{justify-self:start;background:var(--right-bg);color:var(--right);border-radius:4px;padding:1px 8px}
+  .refnote{font-family:var(--sans);font-size:var(--fs-xs);color:var(--muted)}
+  .hlbar{display:flex;align-items:center;gap:var(--s4);padding:var(--s2) var(--s4);border-top:1px solid var(--line);
+         background:var(--surface-2);flex-wrap:wrap;font-size:var(--fs-xs);color:var(--muted)}
+  .hlbar button{display:flex;align-items:center;gap:8px;background:none;border:none;padding:2px 0;font-size:var(--fs-sm);color:var(--text)}
+  .dadd{background:var(--add-bg);color:var(--add);border-radius:3px;padding:0 2px}
+  .ddel{background:var(--del-bg);color:var(--del);text-decoration:line-through;border-radius:3px;padding:0 2px}
+  .cmp-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);border-top:1px solid var(--line)}
+  .side-col{padding:var(--s3) var(--s4) var(--s4);display:flex;flex-direction:column;gap:var(--s2);min-width:0}
+  .side-col+.side-col{border-left:1px solid var(--line)}
+  .side-col.l{border-top:3px solid var(--left)}
+  .side-col.r{border-top:3px solid var(--right)}
+  .side-h{display:flex;align-items:center;gap:8px;font-size:var(--fs-xs);font-weight:600;flex-wrap:wrap}
+  .side-h .nm{font-family:var(--mono);font-size:var(--fs-sm)}
+  .l .nm{color:var(--left)} .r .nm{color:var(--right)}
+  .dot{width:8px;height:8px;border-radius:2px;flex:none}
+  .l .dot{background:var(--left)} .r .dot{background:var(--right)}
+  .role{font-weight:400;color:var(--muted);border:1px solid var(--line-strong);border-radius:99px;padding:0 8px}
+  .answer{font-size:var(--fs-body);line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+  .side-col .meta{margin-top:auto}
+  .actions{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s4);border-top:1px solid var(--line);flex-wrap:wrap}
+  .actions button[aria-pressed="true"]{background:var(--accent-bg);color:var(--accent);border-color:var(--accent)}
+  .details{padding:0 var(--s4) var(--s4);display:flex;flex-direction:column;gap:var(--s3)}
+  .cond{width:100%;border-collapse:collapse;font:var(--fs-xs) var(--mono);border:1px solid var(--line);border-radius:var(--r-sm)}
+  .cond th,.cond td{padding:5px 10px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line);color:var(--muted)}
+  .cond th{background:var(--surface-2);font-weight:600;color:var(--text)}
   .cond tr.diffrow td{color:var(--warn);font-weight:600}
   .cond tr.diffrow td:first-child{color:var(--text)}
   .cond td.mark{width:1%;white-space:nowrap}
-  .verdict{grid-column:1/-1;padding:8px 12px;border-radius:8px;background:var(--panel2);
-        border:1px solid var(--line);font-size:13px;white-space:normal}
-  .verdict.on{border-color:#4a3a1e}
-  .explain{grid-column:1/-1;padding:10px 12px;border-radius:8px;background:var(--panel);
-        border:1px solid var(--accent);font-size:13px;white-space:pre-wrap}
-  .explain h4{margin:0 0 6px;font:600 12px var(--mono);color:var(--accent)}
-  .explain .src{margin-top:6px;font:11px var(--mono);color:var(--muted);white-space:normal}
-  .explain.err{border-color:var(--line);color:var(--muted)}
-  .hl{grid-column:1/-1;font:11px var(--mono);color:var(--muted);display:flex;gap:8px;
-        align-items:center;white-space:normal}
-  .dadd{background:#1e4a33;border-radius:3px}
-  .ddel{background:#4a1e1e;text-decoration:line-through;border-radius:3px}
-  .ptable{width:100%;border-collapse:collapse;margin-top:6px;white-space:normal;
-        table-layout:fixed}
-  .ptable th,.ptable td{padding:3px 8px;border-bottom:1px solid #6a5228;text-align:left;
-        vertical-align:top;overflow-wrap:anywhere}
-  .ptable th:nth-child(1),.ptable td:nth-child(1){width:22%}
-  .ptable th:nth-child(2),.ptable td:nth-child(2){width:12%}
-  .ptable th{color:var(--warn);font-weight:600}
-  .composer .hint{flex-basis:100%;font:11px var(--mono)}
-  .frag{font:11px var(--mono);color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere;
-        padding-left:8px;border-left:2px solid var(--line);margin:1px 0 1px 12px}
-  code{font:11px var(--mono);background:var(--panel2);padding:1px 5px;border-radius:4px}
-  .chat-head a{font:12px var(--mono);color:var(--accent);text-decoration:none}
-  .chat-head a:hover{text-decoration:underline}
-  .pmode button.sel{border-color:var(--accent);color:var(--accent)}
-  #promptBox .pl{display:block;white-space:pre-wrap}
-  #promptBox .pl.add{background:#1e4a33}
-  #promptBox .pl.del{background:#4a1e1e;text-decoration:line-through}
-  .ref{font:11px var(--mono);color:var(--muted)}
-  .ref table{width:100%;border-collapse:collapse;margin:4px 0 10px}
-  .ref th,.ref td{padding:2px 6px;border-bottom:1px solid var(--line);text-align:left}
-  .ref th{color:var(--text);font-weight:600}
-  .ref td.num{text-align:right}
+  .explain{border:1px solid var(--line);border-radius:var(--r-sm);padding:var(--s3);display:flex;flex-direction:column;gap:6px;
+           font-size:var(--fs-sm);white-space:pre-wrap}
+  .explain h4,.sub-h{margin:0;font:600 var(--fs-xs) var(--sans);color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .explain .src{font-size:var(--fs-xs);color:var(--muted);white-space:normal}
+  .raw{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--s2)}
+  .raw pre{margin:0;background:var(--bg);border-radius:var(--r-sm);padding:var(--s2) var(--s3);
+           font:var(--fs-xs)/1.6 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;max-height:320px;overflow:auto}
+  .raw pre.l{border:1px solid var(--left-line)} .raw pre.r{border:1px solid var(--right-line)}
 
-  /* narrow screens: these must sit after the base rules above */
-  @media (max-width: 1100px){ .side{width:340px} }
+  .x5-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);border-top:1px solid var(--line)}
+  .x5-cols.one{grid-template-columns:minmax(0,1fr)}
+  .x5-same{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .x5-same b{font:600 var(--fs-lg) var(--mono)}
+  .letters{display:flex;gap:4px}
+  .letters span{width:24px;height:24px;border-radius:4px;display:grid;place-items:center;font:600 var(--fs-xs) var(--mono);
+                background:var(--surface-2);border:1px solid var(--line-strong)}
+  .letters span.alt{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-line)}
+  .groups{display:flex;flex-direction:column;gap:2px;font:var(--fs-sm) var(--mono)}
+  .bars{display:grid;grid-template-columns:auto minmax(60px,1fr) auto;gap:4px var(--s2);align-items:center;font:var(--fs-xs) var(--mono)}
+  .bar{height:6px;border-radius:3px;background:var(--line)}
+  .bar i{display:block;height:100%;border-radius:3px;background:var(--muted)}
+  .l .bar i{background:var(--left)} .r .bar i{background:var(--right)}
+  .runs{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+  .run{border-top:1px solid var(--line)}
+  .run:first-child{border-top:none}
+  .run-h{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto auto;gap:var(--s2);align-items:center;width:100%;
+         background:none;border:none;border-radius:0;padding:6px 10px;font:var(--fs-xs) var(--mono);text-align:left}
+  .run-h .tools{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .run-a{padding:6px 10px 10px;font-size:var(--fs-sm);white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg)}
+  .note{font-size:var(--fs-xs);color:var(--muted)}
+
+  .drawer{width:420px;flex:none;border-left:1px solid var(--line-strong);background:var(--surface);display:flex;flex-direction:column;min-height:0}
+  .drawer.adv{width:440px}
+  .dr-head{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s4);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .dr-head h2{margin:0;font-size:var(--fs-lg);font-weight:600}
+  .dr-body{flex:1;overflow-y:auto;padding:var(--s3) var(--s4) var(--s4);display:flex;flex-direction:column;gap:var(--s4)}
+  .dr-foot{padding:var(--s3) var(--s4);border-top:1px solid var(--line);display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
+  .sec{display:flex;flex-direction:column;gap:var(--s2)}
+  .sec h3{margin:0;font-size:var(--fs-sm);font-weight:600}
+  .sec-h{display:flex;align-items:baseline;gap:var(--s2);flex-wrap:wrap}
+  .badge-ref{font:600 var(--fs-xs) var(--sans);background:var(--left-bg);color:var(--left);border:1px solid var(--left-line);border-radius:99px;padding:1px 9px}
+  .ref table{width:100%;border-collapse:collapse;font:var(--fs-sm) var(--mono)}
+  .ref th,.ref td{padding:4px 6px;border-bottom:1px solid var(--line);text-align:left}
+  .ref th{color:var(--muted);font:var(--fs-xs) var(--sans)}
+  .ref td.num,.ref th.num{text-align:right}
+  .ref td:first-child{color:var(--muted)}
+  .ref tr.hit td{background:var(--accent-bg);color:var(--text);font-weight:600}
+  .defects{display:flex;flex-wrap:wrap;gap:6px}
+  .dchip{font:var(--fs-xs) var(--mono);padding:4px 7px;border-radius:var(--r-sm);background:transparent;
+         border:1px solid var(--line-strong);color:var(--muted)}
+  .dchip.active{background:var(--warn-bg);border-color:var(--warn);color:var(--warn)}
+  .dchip.profile{background:var(--accent-bg);border-color:var(--accent);color:var(--accent);cursor:default}
+  .legend{display:flex;gap:var(--s3);flex-wrap:wrap;font-size:var(--fs-xs);color:var(--muted)}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px;border:1px solid var(--line-strong)}
+  .knobs{display:grid;grid-template-columns:auto 80px minmax(0,1fr);gap:var(--s2);align-items:center;font-size:var(--fs-sm)}
+  .knobs input{width:80px;font-family:var(--mono)}
+  .tree{font:var(--fs-xs) var(--mono);white-space:pre;overflow-x:auto;color:var(--muted);background:var(--bg);
+        border:1px solid var(--line);border-radius:var(--r-sm);padding:var(--s2)}
+  .tree .sp{cursor:pointer;color:var(--text)}
+  .tree .sp:hover{color:var(--accent)}
+  .tree .tool{color:var(--warn)} .tree .llm{color:var(--accent)}
+  .tree .rep{color:var(--err)}
+  .attrs{background:var(--bg);border:1px solid var(--line);border-radius:var(--r-sm);padding:var(--s2);font:var(--fs-xs) var(--mono);
+         white-space:pre-wrap;word-break:break-word;max-height:280px;overflow-y:auto;color:var(--muted)}
+  .frag{font:var(--fs-xs) var(--mono);color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere;
+        padding-left:8px;border-left:2px solid var(--line);margin:1px 0 1px 12px}
+
+  .overlay{position:fixed;inset:0;z-index:30;background:rgba(15,20,40,.35);display:flex;align-items:flex-start;justify-content:center;padding:6vh var(--s4)}
+  .dialog{width:min(1000px,100%);max-height:88vh;display:flex;flex-direction:column;background:var(--surface);
+          border:1px solid var(--line-strong);border-radius:var(--r-lg);box-shadow:var(--shadow);overflow:hidden}
+  .overlay.full{padding:0}
+  .overlay.full .dialog{width:100%;max-height:100vh;height:100%;border-radius:0}
+  .dlg-head{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s4);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .dlg-head h2{margin:0;font-size:var(--fs-lg);font-weight:600;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .tabs{display:flex;gap:2px;padding:0 var(--s4);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .tabs button{background:none;border:none;border-bottom:2px solid transparent;border-radius:0;padding:10px 12px;color:var(--muted)}
+  .tabs button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
+  .dlg-body{flex:1;overflow:auto;padding:var(--s4);display:grid;grid-template-columns:260px minmax(0,1fr);gap:var(--s4);align-items:start}
+  .dlg-body.single{grid-template-columns:minmax(0,1fr)}
+  .ov{display:flex;flex-direction:column;gap:var(--s4)}
+  .ov .k{font-size:var(--fs-xs);color:var(--muted)}
+  .counts{display:flex;gap:8px;font:600 var(--fs-lg) var(--mono)}
+  .counts .a{color:var(--add)} .counts .d{color:var(--del)}
+  .layers{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px var(--s2);font-size:var(--fs-sm)}
+  .pbox-h{display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s2);flex-wrap:wrap;font:var(--fs-xs) var(--mono);color:var(--muted)}
+  #promptBox{margin:0;background:var(--bg);border:1px solid var(--line);border-radius:var(--r-sm);padding:var(--s2) 0;
+             font:var(--fs-xs)/1.6 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere}
+  #promptBox .pl{display:grid;grid-template-columns:22px minmax(0,1fr);padding:0 var(--s3) 0 0}
+  #promptBox .pl .g{text-align:center;color:var(--muted)}
+  #promptBox .pl.add{background:var(--add-bg);color:var(--add)}
+  #promptBox .pl.del{background:var(--del-bg);color:var(--del);text-decoration:line-through}
+  #promptBox .pl.skip{color:var(--muted);font-style:italic}
+
+  @media (max-width: 1100px){ .drawer{width:360px} .drawer.adv{width:380px} }
   @media (max-width: 820px){
-    body{flex-direction:column;height:auto;min-height:100vh}
-    .chat{min-height:60vh}
-    .side{width:auto;border-left:none;border-top:1px solid var(--line)}
-    .cmp{grid-template-columns:1fr}
+    .top{padding:10px 14px 12px;gap:10px}
+    .vsep,.brand-sub{display:none}
+    .prof{flex-basis:100%;order:3;flex-direction:column;align-items:stretch}
+    #profileBtn{width:100%;min-height:44px}
+    #profileList{width:100%}
+    .prof-desc{max-width:none}
+    .chip-warn{order:4;flex-basis:100%;border-radius:var(--r-sm)}
+    .spend{font-size:var(--fs-xs);flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .brand{flex:0 1 auto}
+    #menuBtn,.composer button,.actions button{min-height:44px}
+    .menu{width:min(330px,calc(100vw - 28px))}
+    .msgs{padding:14px}
+    .composer-in{padding:10px 14px 14px}
+    .actrow #cmpBtn{flex:1}
+    .cmp-cols,.x5-cols,.raw{grid-template-columns:minmax(0,1fr)}
+    .side-col+.side-col{border-left:none;border-top-width:3px}
+    .dgrid{grid-template-columns:minmax(0,1fr) auto auto auto}
+    .dgrid .refnote{grid-column:1/-1}
+    .drawer,.drawer.adv{position:fixed;inset:0;width:auto;z-index:25;border-left:none}
+    .dlg-body{grid-template-columns:minmax(0,1fr)}
+    .lect{left:14px;right:14px;width:auto}
   }
 </style>
 </head>
 <body>
-<div class="chat">
-  <div class="chat-head">
-    <h1>PayPilot</h1>
-    <span class="pill" id="pProfile">—</span>
-    <span class="pill" id="pDefects">—</span>
-    <span class="pill" id="pClock">—</span>
-    <span class="pill" id="pKnobs" style="display:none"></span>
-    <span class="pill" id="pProvider">—</span>
-    <span class="pill" id="pSpend" style="display:none"></span>
-    <span style="flex:1"></span>
-    <a href="#seedBlock" title="Клієнти, рахунки й тіри зі seed-бази">Дані клієнтів</a>
-    <a href="/docs" target="_blank" rel="noopener" title="Усі ендпоінти стенду (Swagger)">API</a>
-    <button onclick="newSession()">Нова сесія</button>
+<header class="top" id="top">
+  <div class="brand"><span class="brand-name">PayPilot</span><span class="brand-sub" data-i18n="appSub"></span></div>
+  <div class="vsep"></div>
+  <div class="prof">
+    <div class="prof-pick">
+      <span class="lbl" data-i18n="profile"></span>
+      <button id="profileBtn" aria-haspopup="listbox" aria-expanded="false" onclick="togglePop('profileList', this)"><span id="profileName">—</span><span class="caret">▼</span></button>
+      <div id="profileList" class="pop" role="listbox" hidden></div>
+    </div>
+    <div class="prof-desc">
+      <span id="profileDesc"></span>
+      <a href="#" id="whatDiffers" onclick="openOverview();return false"></a>
+    </div>
   </div>
-  <div class="msgs" id="msgs"></div>
-  <div class="composer">
-    <input id="inp" placeholder="Напишіть повідомлення…"
-           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}">
-    <button class="primary" id="sendBtn" onclick="send()">Надіслати</button>
-    <button id="cmpBtn" onclick="compare()" title="Той самий запит на clean і на профілі">clean vs профіль</button>
-    <button id="serBtn" onclick="series()" title="Те саме питання п'ять разів, щоразу з нової сесії">×5</button>
-    <div class="hint" id="composerHint"></div>
+  <div id="pKnobs" class="chip-warn" role="status" hidden>
+    <span class="bang">!</span>
+    <span><span data-i18n="changed"></span>: <span class="mono" id="knobsText"></span></span>
+    <button onclick="resetMySettings()" data-i18n="reset"></button>
   </div>
+  <span class="grow"></span>
+  <span id="pSpend" class="spend">≈ $0.0000</span>
+  <div class="menu-wrap">
+    <button id="menuBtn" aria-haspopup="menu" aria-expanded="false" onclick="togglePop('menu', this)"><span data-i18n="menu"></span><span class="caret">▼</span></button>
+    <div id="menu" class="pop menu" role="menu" hidden>
+      <div class="mi"><span data-i18n="langLabel"></span>
+        <div class="seg" role="group"><button id="langUk" onclick="setLang('uk')">УКР</button><button id="langEn" onclick="setLang('en')">EN</button></div>
+      </div>
+      <div class="mi"><span data-i18n="themeLabel"></span>
+        <div class="seg" role="group"><button id="themeLight" onclick="setTheme('light')" data-i18n="themeLight"></button><button id="themeDark" onclick="setTheme('dark')" data-i18n="themeDark"></button></div>
+      </div>
+      <button class="mi" role="menuitemcheckbox" id="projBtn" aria-checked="false" onclick="toggleProjector()"><span data-i18n="projector"></span><span class="switch"></span></button>
+      <button class="mi" role="menuitem" onclick="closePops();newSession()"><span><span data-i18n="newSession"></span><small data-i18n="newSessionSub"></small></span></button>
+      <div class="msep"></div>
+      <button class="mi" role="menuitem" onclick="closePops();openAdvanced()"><span><span data-i18n="advanced"></span><small data-i18n="advancedSub"></small></span><span class="badge" id="advBadge" hidden></span></button>
+      <button class="mi" role="menuitem" onclick="closePops();openCustomers()"><span><span data-i18n="customersLink"></span><small data-i18n="customersSub"></small></span></button>
+      <button class="mi" role="menuitem" onclick="closePops();openReference(lastCompareTier || customerTier())"><span><span data-i18n="reference"></span><small data-i18n="referenceSub"></small></span></button>
+      <div class="msep"></div>
+      <button class="mi" role="menuitem" id="lectItem" hidden onclick="closePops();togglePop('lectPop', $('menuBtn'))"><span data-i18n="lecturer"></span><span class="badge" id="lectBadge" hidden></span></button>
+      <a class="mi" role="menuitem" href="/docs" target="_blank" rel="noopener"><span data-i18n="apiLink"></span><span class="caret">↗</span></a>
+    </div>
+  </div>
+  <div id="lectPop" class="pop lect" role="dialog" hidden>
+    <h3 data-i18n="lecturer"></h3>
+    <div id="adminRow" class="sec">
+      <span class="note" data-i18n="lockedNote"></span>
+      <input type="password" id="adminInp" autocomplete="off">
+      <button class="primary" style="align-self:flex-start" onclick="setAdmin()" data-i18n="signIn"></button>
+    </div>
+    <div id="lecturerOn" class="sec" hidden>
+      <span style="color:var(--ok);font-size:var(--fs-sm)" data-i18n="lecturerOn"></span>
+      <div class="danger"><button onclick="resetState()" data-i18n="resetState"></button><span data-i18n="resetStateHint"></span></div>
+      <button class="link" style="align-self:flex-start" onclick="signOut()" data-i18n="signOut"></button>
+    </div>
+  </div>
+</header>
+
+<div class="body">
+  <main class="chat">
+    <div class="scroller" id="scroller"><div class="msgs" id="msgs" aria-live="polite"></div></div>
+    <footer class="composer">
+      <div class="composer-in">
+        <div class="inrow">
+          <div class="cust-wrap" id="seedBlock">
+            <button id="custBtn" class="cust" aria-haspopup="listbox" aria-expanded="false" onclick="togglePop('custPop', this)"><span class="muted" data-i18n="asShort"></span><span class="mono b" id="custLabel">—</span><span class="caret">▼</span></button>
+            <div id="custPop" class="pop cust-pop" role="listbox" hidden>
+              <div class="cust-head">
+                <b data-i18n="asCustomer"></b>
+                <span class="note" data-i18n="prefixNote"></span>
+                <span class="note mono" id="seedSum"></span>
+              </div>
+              <div class="cust-list" id="seed"></div>
+            </div>
+          </div>
+          <input id="inp" autocomplete="off">
+        </div>
+        <div class="actrow">
+          <button class="primary" id="cmpBtn" onclick="compare()" data-i18n="compare"></button>
+          <span class="pair" id="pairView"><span class="tag-l">clean</span><span class="muted">↔</span><span class="tag-r" id="pairRight">—</span></span>
+          <span class="cap" id="composerHint"></span>
+          <span class="grow"></span>
+          <button id="serBtn" class="x5btn mono" onclick="series()">×5</button>
+          <button id="sendBtn" onclick="send()"></button>
+        </div>
+        <div id="samePair" class="warnline" role="alert" hidden><span class="bang">!</span><span id="samePairText"></span></div>
+      </div>
+    </footer>
+  </main>
+
+  <aside id="refDrawer" class="drawer" aria-labelledby="refTitle" hidden>
+    <div class="dr-head">
+      <h2 id="refTitle" data-i18n="refTitle"></h2>
+      <span class="badge-ref" data-i18n="refBadge"></span>
+      <span class="grow"></span>
+      <button onclick="closeReference()" data-i18n="close"></button>
+    </div>
+    <div class="dr-body">
+      <p class="note" style="margin:0" data-i18n="refSrc"></p>
+      <div class="ref" id="ref"></div>
+      <p class="note" style="margin:0" id="refClock"></p>
+    </div>
+  </aside>
+
+  <aside id="advPanel" class="drawer adv" aria-labelledby="advTitle" hidden>
+    <div class="dr-head">
+      <h2 id="advTitle" data-i18n="advanced"></h2>
+      <span class="grow"></span>
+      <button onclick="closeAdvanced()" data-i18n="close"></button>
+      <p class="note" style="margin:0;flex-basis:100%" data-i18n="advNote"></p>
+    </div>
+    <div class="dr-body">
+      <div class="sec">
+        <div class="sec-h"><h3 data-i18n="defectsTitle"></h3><span class="note" id="dCount"></span></div>
+        <div class="defects" id="defects"></div>
+        <div class="legend">
+          <span><i style="background:var(--accent-bg);border-color:var(--accent)"></i><span data-i18n="lgProfile"></span></span>
+          <span><i style="background:var(--warn-bg);border-color:var(--warn)"></i><span data-i18n="lgYours"></span></span>
+          <span><i></i><span data-i18n="lgOff"></span></span>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-h"><h3 data-i18n="clockTitle"></h3><span class="note" data-i18n="clockSub"></span></div>
+        <div class="row">
+          <input type="text" id="clockInp" class="mono" style="flex:1" placeholder="2026-09-15T10:00:00Z">
+          <button onclick="setClock(false)" data-i18n="set"></button>
+          <button onclick="setClock(true)" data-i18n="reset"></button>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-h"><h3 data-i18n="memTitle"></h3><span class="note" data-i18n="memSub"></span></div>
+        <div class="knobs">
+          <span data-i18n="sumLabel"></span><input type="text" id="sumInp" inputmode="numeric"><span class="note" id="sumNote"></span>
+          <span>top_k</span><input type="text" id="topkInp" inputmode="numeric"><span class="note" id="topkNote"></span>
+          <span data-i18n="idxLabel"></span>
+          <select id="idxSel" style="grid-column:span 2">
+            <option value="" data-i18n="idxByProfile"></option>
+            <option value="kb_clean">kb_clean</option>
+            <option value="kb_broken">kb_broken</option>
+          </select>
+        </div>
+        <div class="row">
+          <button onclick="setSummarize()" data-i18n="setSum"></button>
+          <button onclick="setRetrieval()" data-i18n="setSearch"></button>
+        </div>
+        <span class="note" data-i18n="memHint"></span>
+      </div>
+      <div class="sec">
+        <h3 data-i18n="standTitle"></h3>
+        <span class="note" id="standInfo"></span>
+        <span class="note" id="scopeHint"></span>
+        <div class="danger" id="resetBox" hidden><button id="resetBtn" onclick="resetState()" data-i18n="resetState"></button><span data-i18n="resetStateHint"></span></div>
+      </div>
+      <div class="sec" id="traceSec">
+        <h3><span data-i18n="traceTitle"></span> <span class="mono muted" id="traceId"></span></h3>
+        <div class="tree" id="tree"></div>
+        <div class="attrs" id="attrs" hidden></div>
+      </div>
+    </div>
+    <div class="dr-foot">
+      <button onclick="resetMySettings()" data-i18n="defaults"></button>
+      <span class="note" data-i18n="defaultsSub"></span>
+    </div>
+  </aside>
 </div>
 
-<div class="side">
-  <div>
-    <h2>Профіль заняття</h2>
-    <div class="row">
-      <select id="profileSel" onchange="setProfile()"></select>
-      <button id="resetBtn" onclick="resetState()">Скинути стан</button>
-      <button onclick="resetMySettings()">Типові налаштування</button>
+<div id="overview" class="overlay" hidden onclick="if(event.target===this)showPrompt(null)">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ovTitle">
+    <div class="dlg-head">
+      <h2 id="ovTitle"></h2>
+      <span class="grow"></span>
+      <button onclick="toggleFull()" data-i18n="fullScreen"></button>
+      <button onclick="showPrompt(null)" data-i18n="close"></button>
     </div>
-    <div class="hint" id="scopeHint" style="margin-top:6px"></div>
-    <div class="row" id="adminRow" style="margin-top:6px;display:none">
-      <input type="password" id="adminInp" placeholder="токен лектора">
-      <button onclick="setAdmin()">Увійти як лектор</button>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="pmDiff" onclick="showPrompt('diff')" data-i18n="tabDiff"></button>
+      <button role="tab" id="pmProfile" onclick="showPrompt('profile')"></button>
+      <button role="tab" id="pmClean" onclick="showPrompt('clean')"></button>
     </div>
-  </div>
-
-  <div>
-    <h2>Дефекти <span class="hint" id="dCount"></span></h2>
-    <div class="defects" id="defects"></div>
-    <div class="hint" style="margin-top:8px">
-      Фіолетові — з профілю. Клік по решті вмикає точково (<code>DEFECTS=</code>).
+    <div class="dlg-body" id="ovBody">
+      <div class="ov" id="ovSide"></div>
+      <div>
+        <div class="pbox-h"><span id="promptMeta"></span><span class="grow"></span>
+          <div class="seg" role="group" id="diffMode"><button id="dmChanges" onclick="setDiffMode(false)" data-i18n="onlyChanges"></button><button id="dmAll" onclick="setDiffMode(true)" data-i18n="allText"></button></div>
+        </div>
+        <pre id="promptBox"></pre>
+      </div>
     </div>
-  </div>
-
-  <div>
-    <h2>Час прогону</h2>
-    <div class="row">
-      <input type="text" id="clockInp" placeholder="2026-09-15T10:00:00Z">
-      <button onclick="setClock(false)">Задати</button>
-      <button onclick="setClock(true)">Скинути</button>
-    </div>
-    <div class="hint" style="margin-top:6px">
-      Вікна оскарження рахуються від цієї дати.
-    </div>
-  </div>
-
-  <div>
-    <h2>Довідник clean</h2>
-    <div class="hint" style="margin-bottom:6px">
-      Значення, які рахують рушії банку (<code>app/engines/policy.py</code>). Це еталон
-      для clean; на профілях заняття агент може відповідати інакше — це і шукаємо.
-    </div>
-    <div class="ref" id="ref">завантаження…</div>
-  </div>
-
-  <div>
-    <h2>Пам'ять і пошук</h2>
-    <div class="row">
-      <span class="hint" style="min-width:96px">згортка після</span>
-      <input type="text" id="sumInp" style="max-width:60px" placeholder="8">
-      <button onclick="setSummarize()">Задати</button>
-    </div>
-    <div class="row" style="margin-top:6px">
-      <span class="hint" style="min-width:96px">пошук top_k</span>
-      <input type="text" id="topkInp" style="max-width:60px" placeholder="4">
-      <select id="idxSel">
-        <option value="">індекс за профілем</option>
-        <option value="kb_clean">kb_clean</option>
-        <option value="kb_broken">kb_broken</option>
-      </select>
-      <button onclick="setRetrieval()">Задати</button>
-    </div>
-    <div class="hint" style="margin-top:6px">
-      Заняття про пам'ять вимагає знизити згортку до 2 — інакше діалог не
-      дійде до неї й дефект не проявиться.
-    </div>
-  </div>
-
-  <div>
-    <h2>Системний промпт</h2>
-    <div class="row pmode">
-      <button id="pmProfile" onclick="showPrompt('profile')">Профіль</button>
-      <button id="pmClean" onclick="showPrompt('clean')">clean</button>
-      <button id="pmDiff" onclick="showPrompt('diff')">Різниця з clean</button>
-      <button onclick="showPrompt(null)">Сховати</button>
-    </div>
-    <div class="hint" id="promptMeta" style="margin-top:6px"></div>
-    <pre id="promptBox" style="display:none"></pre>
-  </div>
-
-  <div>
-    <h2>Трейс останнього ходу</h2>
-    <div class="tree" id="tree">— зробіть запит —</div>
-    <div class="attrs" id="attrs" style="margin-top:8px;display:none"></div>
-  </div>
-
-  <div id="seedBlock">
-    <h2>Seed-дані</h2>
-    <div class="hint" id="seedSum" style="margin-bottom:6px"></div>
-    <div class="seed" id="seed">завантаження…</div>
   </div>
 </div>
 
 <script>
+const I18N = {
+  uk: {
+    appSub: 'навчальний стенд', profile: 'Профіль', whatDiffers: 'Чим відрізняється від clean →',
+    changed: 'змінено', reset: 'скинути', spendTip: 'Оцінка витрат з відкриття сторінки за прайсом провайдера; точна сума — у консолі провайдера',
+    unpriced: 'без ціни', menu: 'Меню', langLabel: 'Мова інтерфейсу', themeLabel: 'Тема', themeLight: 'Світла', themeDark: 'Темна',
+    projector: 'Великий шрифт для проєктора', newSession: 'Нова сесія', newSessionSub: 'агент забуває цю розмову',
+    advanced: 'Розширені налаштування', advancedSub: 'дефекти, час, пам’ять і пошук · з L04',
+    customersLink: 'Дані клієнтів', customersSub: 'ID, рівень, рахунки', lecturer: 'Для лектора', lecturerBadge: 'лектор', apiLink: 'API (Swagger)',
+    lockedNote: 'Спільний стенд заблоковано. Серверні дії доступні лише лектору; ваші налаштування діють тільки в цьому браузері.',
+    tokenPh: 'токен лектора', signIn: 'Увійти як лектор', resetState: 'Скинути стан',
+    resetStateHint: 'повертає базу до seed — для всіх студентів', lecturerOn: 'Ви увійшли як лектор.', signOut: 'Вийти',
+    pdesc: {
+      'clean': 'Еталон без дефектів. З ним порівнюють профілі занять.',
+      'lesson-01': 'Для L01: перша розбіжність із clean.',
+      'lesson-02': 'Для L02: відповідь проти еталонних значень.',
+      'lesson-03': 'Для L03: відхилення не щоразу — рахуйте частоти.',
+      'lesson-04': 'Для L04: пам’ять і пошук. Знадобляться розширені налаштування.'
+    },
+    pdescLesson: 'Профіль заняття L{n}.', pdescOther: 'Профіль стенду.',
+    asShort: 'як', asCustomer: 'Як клієнт', noCustomer: 'без клієнта',
+    prefixNote: 'додає на початок «I am CUS-000X.» — інакше агент не знає, хто ви',
+    custTip: 'Від імені якого клієнта питаємо. Додається до питання автоматично.',
+    inputPh: 'Питання англійською…', inputPhNext: 'Наступне питання…',
+    compare: 'Порівняти', compareCap: 'один хід без історії, поруч: clean і {p}',
+    askOnly: 'Спитати лише {p}', sendCap: 'продовжує розмову на {p}',
+    session0: 'нова сесія, без історії', sessionN: 'сесія: позаду {n} {w}',
+    samePair: 'обидві сторони однакові: на {p} не активний жоден дефект — оберіть профіль заняття вгорі', enterCmp: 'Enter — порівняти', enterSend: 'Enter — продовжити сесію',
+    emptyTitle: 'Поставте одне питання двом агентам і подивіться, чим відповіді відрізняються',
+    emptyBody: '{c} — еталон без дефектів. {p} — агент, якого ви перевіряєте.',
+    emptyClean: 'На обраному профілі не активний жоден дефект — він збігається з еталоном clean. Оберіть профіль заняття вгорі, щоб було з чим порівнювати.',
+    tryLabel: 'Спробуйте:', emptyNote: 'clean — це агент без інжектованих дефектів, а не гарантовано правильна відповідь: модель має власну похибку, тож доказ — різниця частот, а не одна пара відповідей.',
+    waiting: 'чекаю на провайдера', waiting25: 'Провайдер не відповідає понад 25 с',
+    waitingHint: 'Перевірте мережу й ключ:', keepWaiting: 'Чекати далі', cancel: 'Не чекати', cancelled: 'Ви перестали чекати. Стенд допрацює цей хід сам; його вартість не врахована в ≈ $.',
+    retry: 'Повторити', copyErr: 'Копіювати помилку', errTitle: 'Не вдалося отримати відповідь',
+    errBalance: 'Найчастіше це вичерпаний баланс або неправильний ключ провайдера. python scripts/doctor.py пояснить людською мовою.',
+    failPrefix: 'Не вдалося', emptyAnswer: '(порожня відповідь)',
+    trace: 'трейс', copy: 'копіювати', copied: 'скопійовано', sec: 'с', priceUnknown: 'ціна моделі невідома',
+    priceUnknownTip: 'модель стенду відсутня в прайсі pricing.py', step: 'крок', model: 'модель', promptV: 'промпт',
+    freshSession: '{r} — нова сесія, історія не передається.', sysNewSession: 'Нова сесія — історія діалогу очищена.',
+    profileSwitched: 'Профіль перемкнено на {p}', defectsOver: 'Дефекти поверх профілю: {d}', none: 'немає',
+    clockSet: 'Час прогону: {t}', realClock: 'реальний час системи', sumSet: 'Згортка історії після кроку {n}',
+    searchSet: 'Пошук: top_k {k}, індекс {i}', settingsReset: 'Налаштування цього браузера скинуто до типових стенду',
+    topkForced: 'Профіль заняття примусово задає top_k={k}; ваше значення {w} не діє, поки цей профіль активний',
+    brokenIdx: 'Профіль заняття задає індекс kb_broken; оберіть kb_clean явно, якщо треба порівняти',
+    sumBad: 'Вкажіть номер кроку, після якого згортати (>= 1)', needText: 'Спершу напишіть питання.',
+    recovered: 'Збережені налаштування стенд відхилив ({m}) — скинуто до типових.',
+    tokenOk: 'Токен лектора прийнято: серверні дії відкриті.', tokenBad: 'Токен не підійшов.',
+    stateReset: 'Стан скинуто до seed {v}: {c} клієнтів, {a} рахунків, {t} транзакцій.',
+    oneTurn: 'один хід · нові сесії · {t}', reference: 'Як має бути', copyEvidence: 'Копіювати доказ',
+    etalon: 'еталон', checking: 'перевіряємо', differ: 'різні', same: 'однакові', checkingNow: 'звіряю',
+    vChecking: 'Звіряю результати інструментів…',
+    vSame: 'Відповіді й результати інструментів однакові — спробуйте ×5: частина дефектів проявляється не щоразу.',
+    vPayloadOnly: 'Текст відповідей однаковий, а результати інструментів розійшлися — дефект видно лише в payload.',
+    vTextOnly: 'Розійшовся лише текст; результати інструментів однакові — звірте числа з «Як має бути».',
+    vBoth: 'Розійшлися і текст, і результати інструментів: {f}.',
+    vBothShort: 'Розійшлися і текст, і результати інструментів.',
+    vUnknown: 'Результати інструментів звірити не вдалося; текст {t}.', vTextDiff: 'відрізняється', vTextSame: 'однаковий',
+    vInputs: 'У вході відрізняється: {d}.', vPromptSame: 'Промпт однаковий, тож {d} — не в промпті: дивіться на інструменти і стан бази.',
+    runX5: 'Запустити ×5', x5Cap: '5 разів на clean і 5 на {p}, кожен прогін — нова сесія: як часто що', x5CapSingle: '5 разів на цьому профілі, кожен прогін — нова сесія: власна похибка моделі', referenceSub: 'еталонні значення рушіїв банку', doubt: 'Сумніваєтесь?', repeat5: 'Повторити 5 разів',
+    highlight: 'Підсвітити різницю', legendDel: 'лише ліворуч', legendAdd: 'лише праворуч',
+    hlSkipped: 'підсвітка вимкнена: відповідь довша за {n} слів',
+    whatDiffered: 'Що відрізнялося', diffChecking: 'порівнюю результати інструментів…',
+    sameAll: 'Результати інструментів однакові — розбіжність, якщо є, лише в тексті.',
+    diffFail: 'Не вдалося порівняти результати інструментів: {m}', moreRows: '… ще {n}',
+    notCalled: 'не викликано', called: 'викликано', refFor: 'довідник для {k}: {v}', fPrompt: 'версія промпту',
+    details: 'Деталі', detailsSub: 'умови прогону · пояснення легкої моделі · сирі результати інструментів',
+    conditions: 'Умови прогону', explainTitle: 'Пояснення легкої моделі', explainWait: 'легка модель звіряє відповіді й результати інструментів…',
+    explainNote: 'Це думка моделі, а не перевірка. Звіряйте з підсвіткою й списком «Що відрізнялося».',
+    explainNone: '(модель нічого не відповіла)', explainFail: 'Пояснення недоступне: {m}. Різниця вище показана без нього.',
+    rawPayloads: 'Сирі результати інструментів', noTools: 'інструменти не викликались',
+    cProfile: 'профіль', cDefects: 'дефекти', cPrompt: 'промпт', cSession: 'сесія', cClock: 'час стенду', cIndex: 'індекс пошуку', cModel: 'модель',
+    newNoHistory: 'нова, без історії чату', eq: '= однаково', neq: '≠ різниться', comparing: 'порівнюю…',
+    x5Title: 'те саме питання {n} разів · кожен прогін — нова сесія', x5Running: 'ганяю {n} разів… це до {m} викликів моделі, зачекайте',
+    x5Same: '{k} з {n}', x5SameSub: 'відповідей однакові за числами', x5FreqDiff: 'частоти різні', x5FreqSame: 'частоти однакові',
+    x5VerdictDiff: 'Розподіл відповідей або викликів інструментів різниться: {d}.', x5VerdictSame: 'Обидві сторони поводяться однаково в усіх {n} прогонах.',
+    x5Single: 'Профіль clean без дефектів — {n} прогонів лише на ньому: так видно власну похибку моделі.',
+    x5Groups: 'групи {l}: {r}', x5Tools: '{t}: {a} → {b}',
+    x5Note: 'Доказ — це різниця частот, а не одна пара відповідей. Прогін, де агент перепитав, теж рахується: так виглядає похибка еталона.',
+    tokensTime: 'Токени й час', noToolsCalled: 'жодного інструмента не викликано', emptyRun: '(порожньо)',
+    refTitle: 'Як має бути', refBadge: 'еталон для clean',
+    refSrc: 'Значення з рушіїв банку (app/engines/policy.py). На профілях занять агент може відповідати інакше — це й шукаємо.',
+    refFx: 'Конвертація валют', tier: 'тір', spread: 'спред, %', freeFx: 'без спреду, EUR/міс',
+    refLimits: 'Ліміти переказів, EUR', perDay: 'на день', perMonth: 'на місяць',
+    refFees: 'Комісії за переказ', type: 'тип', flat: 'фіксовано, EUR', pct: '+ % від суми',
+    refDisputes: 'Вікна оскарження', reason: 'причина', days: 'днів',
+    refRates: 'Курси до EUR', currency: 'валюта', refClock: 'Вікна рахуються від часу прогону {t}.', close: 'Закрити',
+    unavailable: 'недоступно', loading: 'завантаження…',
+    advNote: 'Ці налаштування змінюють відповіді. Змінене видно жовтим чіпом на головному екрані.',
+    defectsTitle: 'Дефекти поверх профілю', dCount: 'з профілю {p} · додано {e}',
+    lgProfile: 'з профілю', lgYours: 'увімкнено вами', lgOff: 'вимкнено',
+    clockTitle: 'Час прогону', clockSub: 'від нього рахуються вікна оскарження', set: 'Задати',
+    memTitle: 'Пам’ять і пошук', memSub: 'знадобиться з L04', sumLabel: 'згортка після кроку', idxLabel: 'індекс',
+    idxByProfile: 'за профілем', setSum: 'Задати згортку', setSearch: 'Задати пошук',
+    defaultIs: 'типово {v}', changedDefault: 'змінено · типово {v}',
+    memHint: 'Заняття про пам’ять вимагає знизити згортку до 2 — інакше діалог не дійде до неї й дефект не проявиться.',
+    standTitle: 'Стенд', standInfo: 'Провайдер {p} · трасування {o}', otlpOn: 'Phoenix підключено', otlpOff: 'вимкнено',
+    scopeLocked: 'Спільний стенд: профіль, дефекти, час і пошук діють лише в цьому браузері; інші студенти їх не бачать. Без налаштувань стенд стартує як {p}.',
+    scopeAdmin: 'Ви лектор: серверні дії відкриті. Профіль та інші налаштування все одно діють лише в цьому браузері.',
+    scopeLocal: 'Налаштування діють лише в цьому браузері; серверні типові — у .env стенду ({p}).',
+    traceTitle: 'Трейс останнього ходу', traceEmpty: '— зробіть запит —', traceNA: 'трейс недоступний',
+    retryN: 'повтор {n}', sameArgs: 'повтор {n}, ті самі аргументи', noFrag: 'жодного фрагмента не знайдено',
+    defaults: 'Типові налаштування', defaultsSub: 'скидає все, що збережено в цьому браузері',
+    knobDefects: 'дефекти {d}', knobSum: 'згортка {n}', knobIdx: 'індекс {i}', knobClock: 'час {t}',
+    ovTitle: 'Чим {p} відрізняється від {c}', fullScreen: 'На весь екран', tabDiff: 'Огляд і різниця',
+    tabProfile: 'Повний промпт {p}', tabClean: 'Промпт clean', onlyChanges: 'лише зміни', allText: 'весь текст',
+    ovLines: 'Рядки інструкції порівняно з clean', ovLayers: 'Зачеплені шари', ovDefects: 'Дефекти профілю',
+    ovLayersNote: 'Скільки дефектів профілю припадає на кожен шар — з метаданих. Що робить кожен дефект, тут не показано: це і є завдання.',
+    ovNoLayers: 'У цій збірці метаданих про шари немає.', ovLessons: 'Для занять', ovClean: 'clean — це еталон: порівнювати нема з чим.',
+    promptSame: 'Промпт профілю {p} збігається з clean.', sameLines: '… {n} однакових рядків', vsClean: '{p} проти clean',
+    linesFromClean: 'від clean: +{a} / −{d} рядків',
+    layerNames: {prompt: 'інструкція', tools: 'інструменти', tool: 'інструменти', rag: 'пошук у базі знань', retrieval: 'пошук у базі знань', memory: 'пам’ять', data: 'дані', policy: 'правила'},
+    evQuestion: 'Питання', evAnswer: 'Відповідь', evTrace: 'трейс', evConditions: 'Умови, що різняться', evDiffs: 'Що відрізнялося в інструментах',
+    evNone: 'немає', evRuns: 'прогони', turnsWord: ['хід', 'ходи', 'ходів']
+  },
+  en: {
+    appSub: 'training stand', profile: 'Profile', whatDiffers: 'How it differs from clean →',
+    changed: 'changed', reset: 'reset', spendTip: 'Spend estimate since the page was opened, at the provider’s list price; the exact amount is in the provider console',
+    unpriced: 'unpriced', menu: 'Menu', langLabel: 'Interface language', themeLabel: 'Theme', themeLight: 'Light', themeDark: 'Dark',
+    projector: 'Large type for a projector', newSession: 'New session', newSessionSub: 'the agent forgets this conversation',
+    advanced: 'Advanced settings', advancedSub: 'defects, clock, memory and search · from L04',
+    customersLink: 'Customer data', customersSub: 'ID, tier, accounts', lecturer: 'For the lecturer', lecturerBadge: 'lecturer', apiLink: 'API (Swagger)',
+    lockedNote: 'This shared stand is locked. Server actions are lecturer-only; your settings apply to this browser only.',
+    tokenPh: 'lecturer token', signIn: 'Sign in as lecturer', resetState: 'Reset state',
+    resetStateHint: 'restores the database to the seed — for every student', lecturerOn: 'Signed in as lecturer.', signOut: 'Sign out',
+    pdesc: {
+      'clean': 'Baseline with no defects. Lesson profiles are compared to it.',
+      'lesson-01': 'For L01: your first difference from clean.',
+      'lesson-02': 'For L02: answers against reference values.',
+      'lesson-03': 'For L03: deviations don’t show every time — count frequencies.',
+      'lesson-04': 'For L04: memory and search. Needs advanced settings.'
+    },
+    pdescLesson: 'Lesson profile L{n}.', pdescOther: 'Stand profile.',
+    asShort: 'as', asCustomer: 'As customer', noCustomer: 'no customer',
+    prefixNote: 'prepends “I am CUS-000X.” — otherwise the agent doesn’t know who you are',
+    custTip: 'Which customer is asking. Added to the question automatically.',
+    inputPh: 'Question in English…', inputPhNext: 'Next question…',
+    compare: 'Compare', compareCap: 'one turn, no history, side by side: clean and {p}',
+    askOnly: 'Ask {p} only', sendCap: 'continues the chat on {p}',
+    session0: 'new session, no history', sessionN: 'session: {n} {w} so far',
+    samePair: 'both sides are the same: no defect is active on {p} — pick a lesson profile at the top', enterCmp: 'Enter compares', enterSend: 'Enter continues the session',
+    emptyTitle: 'Ask two agents one question and see how the answers differ',
+    emptyBody: '{c} is the baseline with no defects. {p} is the agent you are testing.',
+    emptyClean: 'No defect is active on the selected profile — it matches the clean baseline. Pick a lesson profile at the top so there is something to compare.',
+    tryLabel: 'Try:', emptyNote: 'clean is the agent with no injected defects, not a guaranteed correct answer: the model has its own error, so evidence is a difference in frequencies, not one pair of answers.',
+    waiting: 'waiting for the provider', waiting25: 'The provider hasn’t answered for over 25 s',
+    waitingHint: 'Check the network and key:', keepWaiting: 'Keep waiting', cancel: 'Stop waiting', cancelled: 'You stopped waiting. The stand finishes this turn on its own; its cost is not in the ≈ $ estimate.',
+    retry: 'Retry', copyErr: 'Copy error', errTitle: 'Couldn’t get an answer',
+    errBalance: 'Most often the provider balance is used up or the key is wrong. python scripts/doctor.py explains it in plain words.',
+    failPrefix: 'Failed', emptyAnswer: '(empty answer)',
+    trace: 'trace', copy: 'copy', copied: 'copied', sec: 's', priceUnknown: 'model price unknown',
+    priceUnknownTip: 'the stand model is missing from pricing.py', step: 'step', model: 'model', promptV: 'prompt',
+    freshSession: '{r} — new session, history is not passed on.', sysNewSession: 'New session — conversation history cleared.',
+    profileSwitched: 'Switched to {p}', defectsOver: 'Defects on top of the profile: {d}', none: 'none',
+    clockSet: 'Run clock: {t}', realClock: 'real system time', sumSet: 'History folds after step {n}',
+    searchSet: 'Search: top_k {k}, index {i}', settingsReset: 'This browser’s settings reset to the stand defaults',
+    topkForced: 'The lesson profile forces top_k={k}; your value {w} has no effect while this profile is active',
+    brokenIdx: 'The lesson profile sets index kb_broken; choose kb_clean explicitly to compare',
+    sumBad: 'Enter the step after which to fold (>= 1)', needText: 'Type a question first.',
+    recovered: 'The stand rejected the saved settings ({m}) — reset to defaults.',
+    tokenOk: 'Lecturer token accepted: server actions are open.', tokenBad: 'The token didn’t match.',
+    stateReset: 'State reset to seed {v}: {c} customers, {a} accounts, {t} transactions.',
+    oneTurn: 'one turn · fresh sessions · {t}', reference: 'What’s correct', copyEvidence: 'Copy evidence',
+    etalon: 'baseline', checking: 'under test', differ: 'differ', same: 'identical', checkingNow: 'checking',
+    vChecking: 'Checking the tool results…',
+    vSame: 'Answers and tool results are identical — try ×5: some defects don’t show every time.',
+    vPayloadOnly: 'The answer text is the same but the tool results differ — the defect shows only in the payload.',
+    vTextOnly: 'Only the text differs; tool results are identical — check the numbers against “What’s correct”.',
+    vBoth: 'Both the text and the tool results differ: {f}.',
+    vBothShort: 'Both the text and the tool results differ.',
+    vUnknown: 'Couldn’t compare the tool results; the text {t}.', vTextDiff: 'differs', vTextSame: 'is the same',
+    vInputs: 'Inputs differ in: {d}.', vPromptSame: 'The prompt is the same, so {d} is not in the prompt: look at the tools and database state.',
+    runX5: 'Run ×5', x5Cap: '5 runs on clean and 5 on {p}, each a new session: how often', x5CapSingle: '5 runs on this profile, each a new session: the model’s own error', referenceSub: 'reference values from the bank engines', doubt: 'Not sure?', repeat5: 'Repeat 5 times',
+    highlight: 'Highlight differences', legendDel: 'left only', legendAdd: 'right only',
+    hlSkipped: 'highlighting off: the answer is longer than {n} words',
+    whatDiffered: 'What differed', diffChecking: 'comparing tool results…',
+    sameAll: 'Tool results are identical — any difference is in the text only.',
+    diffFail: 'Couldn’t compare tool results: {m}', moreRows: '… {n} more',
+    notCalled: 'not called', called: 'called', refFor: 'reference for {k}: {v}', fPrompt: 'prompt version',
+    details: 'Details', detailsSub: 'run conditions · light-model explanation · raw tool payloads',
+    conditions: 'Run conditions', explainTitle: 'Light-model explanation', explainWait: 'the light model is comparing answers and tool results…',
+    explainNote: 'This is the model’s opinion, not a check. Verify it against the highlights and “What differed”.',
+    explainNone: '(the model returned nothing)', explainFail: 'Explanation unavailable: {m}. The difference above is shown without it.',
+    rawPayloads: 'Raw tool payloads', noTools: 'no tools were called',
+    cProfile: 'profile', cDefects: 'defects', cPrompt: 'prompt', cSession: 'session', cClock: 'stand clock', cIndex: 'search index', cModel: 'model',
+    newNoHistory: 'new, no chat history', eq: '= same', neq: '≠ differs', comparing: 'comparing…',
+    x5Title: 'the same question {n} times · every run is a new session', x5Running: 'running {n} times… up to {m} model calls, please wait',
+    x5Same: '{k} of {n}', x5SameSub: 'answers identical by their numbers', x5FreqDiff: 'frequencies differ', x5FreqSame: 'frequencies match',
+    x5VerdictDiff: 'The distribution of answers or tool calls differs: {d}.', x5VerdictSame: 'Both sides behave the same in all {n} runs.',
+    x5Single: 'clean with no defects — {n} runs on it alone: this shows the model’s own error.',
+    x5Groups: 'groups {l}: {r}', x5Tools: '{t}: {a} → {b}',
+    x5Note: 'Evidence is a difference in frequencies, not one pair of answers. A run where the agent asked back counts too: that is the baseline’s error.',
+    tokensTime: 'Tokens and time', noToolsCalled: 'no tools called', emptyRun: '(empty)',
+    refTitle: 'What’s correct', refBadge: 'baseline for clean',
+    refSrc: 'Values from the bank engines (app/engines/policy.py). Lesson profiles may answer differently — that’s what you look for.',
+    refFx: 'Currency conversion', tier: 'tier', spread: 'spread, %', freeFx: 'spread-free, EUR/mo',
+    refLimits: 'Transfer limits, EUR', perDay: 'per day', perMonth: 'per month',
+    refFees: 'Transfer fees', type: 'type', flat: 'flat, EUR', pct: '+ % of amount',
+    refDisputes: 'Dispute windows', reason: 'reason', days: 'days',
+    refRates: 'Rates to EUR', currency: 'currency', refClock: 'Windows count from the run clock {t}.', close: 'Close',
+    unavailable: 'unavailable', loading: 'loading…',
+    advNote: 'These settings change answers. Anything changed shows as an amber chip on the main screen.',
+    defectsTitle: 'Defects on top of the profile', dCount: 'from profile {p} · added {e}',
+    lgProfile: 'from profile', lgYours: 'turned on by you', lgOff: 'off',
+    clockTitle: 'Run clock', clockSub: 'dispute windows count from it', set: 'Set',
+    memTitle: 'Memory and search', memSub: 'needed from L04', sumLabel: 'fold after step', idxLabel: 'index',
+    idxByProfile: 'by profile', setSum: 'Set folding', setSearch: 'Set search',
+    defaultIs: 'default {v}', changedDefault: 'changed · default {v}',
+    memHint: 'The memory lesson needs folding lowered to 2 — otherwise the dialogue never reaches it and the defect doesn’t show.',
+    standTitle: 'Stand', standInfo: 'Provider {p} · tracing {o}', otlpOn: 'Phoenix connected', otlpOff: 'off',
+    scopeLocked: 'Shared stand: profile, defects, clock and search apply to this browser only; other students don’t see them. With no settings the stand starts as {p}.',
+    scopeAdmin: 'You are the lecturer: server actions are open. Profile and other settings still apply to this browser only.',
+    scopeLocal: 'Settings apply to this browser only; server defaults are in the stand’s .env ({p}).',
+    traceTitle: 'Last turn trace', traceEmpty: '— make a request —', traceNA: 'trace unavailable',
+    retryN: 'retry {n}', sameArgs: 'repeat {n}, same arguments', noFrag: 'no fragments found',
+    defaults: 'Default settings', defaultsSub: 'clears everything saved in this browser',
+    knobDefects: 'defects {d}', knobSum: 'folding {n}', knobIdx: 'index {i}', knobClock: 'clock {t}',
+    ovTitle: 'How {p} differs from {c}', fullScreen: 'Full screen', tabDiff: 'Overview and diff',
+    tabProfile: 'Full prompt {p}', tabClean: 'clean prompt', onlyChanges: 'changes only', allText: 'full text',
+    ovLines: 'Instruction lines compared to clean', ovLayers: 'Layers touched', ovDefects: 'Profile defects',
+    ovLayersNote: 'How many of the profile’s defects fall on each layer — from metadata. What each defect does is not shown: that is the task.',
+    ovNoLayers: 'This build carries no layer metadata.', ovLessons: 'For lessons', ovClean: 'clean is the baseline: nothing to compare.',
+    promptSame: 'The prompt of {p} matches clean.', sameLines: '… {n} identical lines', vsClean: '{p} vs clean',
+    linesFromClean: 'from clean: +{a} / −{d} lines',
+    layerNames: {},
+    evQuestion: 'Question', evAnswer: 'Answer', evTrace: 'trace', evConditions: 'Conditions that differ', evDiffs: 'Tool result differences',
+    evNone: 'none', evRuns: 'runs', turnsWord: ['turn', 'turns', 'turns']
+  }
+};
+
 const $ = function(id){ return document.getElementById(id); };
 let sessionId = null, lastTrace = null, lastStep = 0, currentProfile = '—';
-let extraDefects = new Set(), profileDefects = new Set();
-let standLocked = false, isAdmin = false;
+let extraDefects = new Set(), profileDefects = new Set(), defectDetails = {};
+let standLocked = false, isAdmin = false, health = null, knownProfiles = [];
+let customers = [], accountsOf = {}, reference = null, standClock = '';
+let lastCompareTier = '', activeCount = -1;
 
-let ALL_IDS = [];   // filled from /api/_test/defects
+let ALL_IDS = [];
 
 const SETTINGS_KEY = 'paypilot.settings', ADMIN_KEY = 'paypilot.admin';
+const UI_KEY = 'paypilot.ui';
 function readStore(key, fallback){
   try{ const v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); }
   catch(_){ return fallback; }
@@ -278,6 +788,34 @@ function writeStore(key, value){
 }
 let settings = readStore(SETTINGS_KEY, {}) || {};
 let adminToken = readStore(ADMIN_KEY, '') || '';
+let ui = Object.assign({lang: 'uk', theme: '', projector: false, customer: ''}, readStore(UI_KEY, {}) || {});
+
+function saveUi(){ writeStore(UI_KEY, ui); }
+function t(key, vars){
+  const d = I18N[ui.lang] || I18N.uk;
+  let s = d[key] !== undefined ? d[key] : I18N.uk[key];
+  if(typeof s === 'string' && vars){
+    Object.keys(vars).forEach(function(k){ s = s.split('{' + k + '}').join(vars[k]); });
+  }
+  return s === undefined ? key : s;
+}
+
+function el(tag, props, kids){
+  const n = document.createElement(tag);
+  Object.keys(props || {}).forEach(function(k){
+    const v = props[k];
+    if(v === undefined || v === null || v === false) return;
+    if(k === 'text') n.textContent = v;
+    else if(k === 'cls') n.className = v;
+    else if(k.indexOf('on') === 0) n[k] = v;
+    else n.setAttribute(k, v === true ? '' : v);
+  });
+  (kids || []).forEach(function(c){
+    if(c === null || c === undefined || c === false) return;
+    n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  });
+  return n;
+}
 
 function saveSettings(){ writeStore(SETTINGS_KEY, settings); }
 function withSetting(key, value){
@@ -296,8 +834,7 @@ function recoverSettings(message){
   if(!/X-Stand-Settings/.test(message) || !Object.keys(settings).length) return false;
   settings = {};
   saveSettings();
-  addMsg('Збережені в браузері налаштування стенд відхилив (' + message +
-         '); скинуто до типових', 'err');
+  addMsg(t('recovered', {m: message}), 'err');
   return true;
 }
 function settingsHeaders(){
@@ -309,7 +846,7 @@ function settingsHeaders(){
 function freshSession(reason){
   sessionId = null;
   lastStep = 0;
-  addMsg(reason + ' — нова сесія, попередня історія агенту далі не передається', 'sys');
+  addMsg(t('freshSession', {r: reason}), 'sys');
 }
 
 async function api(path, opts){
@@ -318,19 +855,17 @@ async function api(path, opts){
   opts.headers = headers;
   const r = await fetch(path, opts);
   if(!r.ok){
-    // FastAPI answers {"detail": "..."}; showing the raw body put JSON in
-    // front of a lecturer mid-lesson
     const body = await r.text();
     let msg = body.slice(0,300);
-    try{ const j = JSON.parse(body); if(j && j.detail) msg = j.detail; }catch(_){}
-    throw new Error(msg);
+    try{ const j = JSON.parse(body); if(j && j.detail) msg = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail); }catch(_){}
+    const err = new Error(msg);
+    err.status = r.status;
+    throw err;
   }
   return r.json();
 }
 
-// Errors belong in the conversation, not in a modal dialog: alert() blocks the
-// page, cannot be read back, and was showing the raw response body.
-function fail(e){ addMsg('Не вдалося: ' + e.message, 'err'); }
+function fail(e){ addMsg(t('failPrefix') + ': ' + e.message, 'err'); }
 
 function jpost(body){
   return {method:'POST', headers:{'Content-Type':'application/json'},
@@ -341,12 +876,6 @@ function jput(body){
           body: JSON.stringify(body)};
 }
 
-// The model answers in markdown, and the page was showing the asterisks. On a
-// projector that buries the numbers, which are the whole point of the reply.
-//
-// Built as DOM nodes, never innerHTML: this stand deliberately carries prompt
-// injection payloads, so parsing HTML out of model output would be a real hole
-// rather than a theoretical one. Only **bold** and `code` are recognised.
 function renderRich(text, el){
   const re = /\*\*([^*]+)\*\*|`([^`]+)`/g;
   let last = 0, m;
@@ -365,59 +894,145 @@ function addMsg(text, cls){
   const d = document.createElement('div');
   d.className = 'msg ' + cls;
   d.textContent = text;
-  $('msgs').appendChild(d);
-  $('msgs').scrollTop = $('msgs').scrollHeight;
-  return d;
+  return appendNode(d);
 }
 
-async function send(){
-  const inp = $('inp'), text = inp.value.trim();
-  if(!text) return;
+function appendNode(node){
+  const empty = $('emptyState');
+  const conversational = /\b(user|card)\b/.test(node.className);
+  if(empty && conversational) empty.remove();
+  if(empty && !conversational) $('msgs').insertBefore(node, empty);
+  else $('msgs').appendChild(node);
+  scrollEnd();
+  return node;
+}
+function scrollEnd(){ $('scroller').scrollTop = $('scroller').scrollHeight; }
+
+function addUser(text, cust){
+  const d = el('div', {cls: 'msg user'});
+  if(cust) d.appendChild(el('span', {cls: 'cust-tag', text: t('asShort') + ' ' + cust}));
+  d.appendChild(document.createTextNode(text));
+  return appendNode(d);
+}
+
+function copyText(text, btn){
+  const done = function(){
+    if(!btn) return;
+    const was = btn.textContent;
+    btn.textContent = t('copied');
+    setTimeout(function(){ btn.textContent = was; }, 1400);
+  };
+  try{
+    if(navigator.clipboard && window.isSecureContext){ navigator.clipboard.writeText(text).then(done, function(){ legacyCopy(text); done(); }); return; }
+  }catch(_){}
+  legacyCopy(text);
+  done();
+}
+function legacyCopy(text){
+  const ta = el('textarea', {style: 'position:fixed;opacity:0'});
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  try{ document.execCommand('copy'); }catch(_){}
+  ta.remove();
+}
+
+function composeMessage(text){
+  const cust = ui.customer;
+  if(!cust || /CUS-\d{4}/i.test(text)) return {message: text, cust: ''};
+  const prefix = /[а-яіїєґё]/i.test(text) ? 'Я ' + cust + '. ' : 'I am ' + cust + '. ';
+  return {message: prefix + text, cust: cust};
+}
+
+function startWaiting(bubble, controller){
+  const started = Date.now();
+  bubble.textContent = '';
+  const line = el('div', {cls: 'wait'}, [el('span', {cls: 'dots'}, [el('i'), el('i'), el('i')]), el('span', {text: '…'})]);
+  bubble.appendChild(line);
+  const label = line.lastChild;
+  let stuck = null;
+  const tick = setInterval(function(){
+    const s = Math.round((Date.now() - started) / 1000);
+    if(s >= 8) label.textContent = t('waiting') + ' · ' + s + ' ' + t('sec');
+    if(s >= 25 && !stuck){
+      stuck = el('div', {cls: 'stuck', role: 'status'}, [
+        el('b', {text: t('waiting25')}),
+        el('span', {}, [t('waitingHint') + ' ', el('code', {text: 'python scripts/doctor.py'})]),
+        el('div', {cls: 'row'}, [
+          el('button', {text: t('keepWaiting'), onclick: function(){ stuck.hidden = true; }}),
+          el('button', {text: t('cancel'), onclick: function(){ controller.abort(); }})])]);
+      bubble.appendChild(stuck);
+      scrollEnd();
+    }
+  }, 1000);
+  return function(){ clearInterval(tick); };
+}
+
+function errorBlock(holder, e, retry){
+  holder.className = 'alert';
+  holder.setAttribute('role', 'alert');
+  holder.textContent = '';
+  const aborted = e.name === 'AbortError';
+  if(aborted) addSpend(null);
+  holder.appendChild(el('b', {text: aborted ? t('cancelled') : t('errTitle')}));
+  if(!aborted){
+    holder.appendChild(el('span', {cls: 'mono', text: (e.status ? 'HTTP ' + e.status + ' · ' : '') + e.message}));
+    if(/balance|credit|api key|api_key|401|authenticat|quota/i.test(e.message)) holder.appendChild(el('span', {text: t('errBalance')}));
+  }
+  holder.appendChild(el('div', {cls: 'row'}, [
+    retry ? el('button', {text: t('retry'), onclick: function(){ holder.remove(); retry(); }}) : null,
+    aborted ? null : el('button', {text: t('copyErr'), onclick: function(){ copyText(e.message, this); }})]));
+}
+
+function metaLine(side, onTrace){
+  const u = side.usage || {};
+  const m = el('div', {cls: 'meta'});
+  const secs = side.elapsed_ms != null ? (side.elapsed_ms / 1000).toFixed(1) + ' ' + t('sec') : '';
+  const cost = u.cost_usd == null ? t('priceUnknown') : '≈ ' + fmtUsd(u.cost_usd);
+  const first = el('span', {text: cost + (secs ? ' · ' + secs : '')});
+  if(u.cost_usd == null) first.title = t('priceUnknownTip');
+  m.title = 'tokens in ' + u.input_tokens + ' · out ' + u.output_tokens + ' · ' + t('promptV') + ' ' +
+    side.prompt_version + ' · ' + t('step') + ' ' + side.step_number + ' · ' + t('model') + ' ' + (side.model || u.model || '—');
+  m.appendChild(first);
+  m.appendChild(el('span', {text: '·'}));
+  const a = el('a', {text: t('trace') + ' ' + side.request_id.slice(0, 8), onclick: function(){ onTrace(side.request_id); }});
+  m.appendChild(a);
+  m.appendChild(el('button', {cls: 'quiet', text: t('copy'), onclick: function(){ copyText(side.request_id, this); }}));
+  return m;
+}
+
+function openTrace(id){
+  openAdvanced();
+  loadTrace(id);
+  $('traceSec').scrollIntoView({block: 'start'});
+}
+
+async function send(retryText){
+  const inp = $('inp'), text = typeof retryText === 'string' ? retryText : inp.value.trim();
+  if(!text){ inp.focus(); return; }
   inp.value = '';
-  addMsg(text, 'user');
+  const composed = composeMessage(text);
+  addUser(text, composed.cust);
   $('sendBtn').disabled = true;
   const thinking = addMsg('…', 'bot');
-  // A hung provider call leaves this bubble on '…' with nothing said. The
-  // client timeout is 90s per model call, and a retry loop makes up to nine of
-  // them, so "stuck" can mean minutes. Measured during a click-through when
-  // the TLS handshake to the provider timed out: the page looked frozen and
-  // gave no reason. These ticks explain the wait instead.
-  const waited = [
-    setTimeout(function(){ thinking.textContent = '… чекаю на провайдера'; }, 8000),
-    setTimeout(function(){
-      thinking.textContent = '… провайдер не відповідає понад 25 с. Якщо так '
-        + 'триватиме, перевірте мережу й ключ: python scripts/doctor.py'; }, 25000)];
-  const stopWaiting = function(){ waited.forEach(clearTimeout); };
+  const controller = new AbortController();
+  const stopWaiting = startWaiting(thinking, controller);
   try{
-    const res = await api('/chat', jpost({message:text, session_id:sessionId}));
+    const res = await api('/chat', Object.assign(jpost({message: composed.message, session_id: sessionId}), {signal: controller.signal}));
     sessionId = res.session_id;
     lastStep = res.step_number;
     stopWaiting();
     thinking.textContent = '';
-    renderRich(res.answer || '(порожня відповідь)', thinking);
+    renderRich(res.answer || t('emptyAnswer'), thinking);
     const u = res.usage || {};
-    const m = document.createElement('div');
-    m.className = 'meta';
-    const a = document.createElement('a');
-    a.textContent = 'трейс ' + res.request_id.slice(0,8);
-    a.onclick = function(){ loadTrace(res.request_id); };
-    m.appendChild(document.createTextNode(
-      'крок ' + res.step_number + ' · in ' + u.input_tokens +
-      ' / out ' + u.output_tokens + ' tok' + costPart(u.cost_usd) +
-      // latency is a requirement in US-01 and a budget metric in L08; the API
-      // returns it, so it belongs next to the token count rather than one
-      // trace fetch away
-      (res.elapsed_ms != null ? ' · ' + Math.round(res.elapsed_ms) + ' ms' : '') +
-      ' · промпт ' + res.prompt_version + ' · '));
-    m.appendChild(a);
-    thinking.appendChild(m);
+    thinking.appendChild(metaLine({usage: u, elapsed_ms: res.elapsed_ms, prompt_version: res.prompt_version,
+      step_number: res.step_number, request_id: res.request_id, model: u.model}, openTrace));
     addSpend(u.cost_usd);
     loadTrace(res.request_id);
     renderComposerHint();
   }catch(e){
     stopWaiting();
-    thinking.textContent = 'Помилка: ' + e.message;
-    thinking.classList.add('err');
+    errorBlock(thinking, e, function(){ send(text); });
   }finally{
     $('sendBtn').disabled = false;
     inp.focus();
@@ -434,105 +1049,102 @@ function costPart(c){
 }
 function addSpend(c){
   if(c == null) spentUnpriced += 1; else spentUsd += c;
+  renderSpend();
+}
+function renderSpend(){
   const pill = $('pSpend');
-  pill.style.display = '';
-  pill.textContent = spentUsd || !spentUnpriced
-    ? 'з відкриття сторінки ≈ ' + fmtUsd(spentUsd) +
-      (spentUnpriced ? ' + ' + spentUnpriced + ' запитів без ціни' : '')
-    : 'вартість: ціна моделі стенду невідома';
-  pill.title = 'Оцінка за прайсом провайдера для моделі стенду; точна сума — у консолі провайдера';
+  pill.textContent = '≈ ' + fmtUsd(spentUsd) + (spentUnpriced ? ' + ' + spentUnpriced + ' ' + t('unpriced') : '');
+  pill.title = t('spendTip');
 }
 
 function turnsWord(n){
-  if(n % 10 === 1 && n % 100 !== 11) return 'хід';
-  if(n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) return 'ходи';
-  return 'ходів';
+  const w = t('turnsWord');
+  if(n % 10 === 1 && n % 100 !== 11) return w[0];
+  if(n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) return w[1];
+  return w[2];
 }
 
-function renderComposerHint(){
+function armName(){
   const pins = Array.from(extraDefects);
-  const arm = currentProfile + (pins.length ? ' + ' + pins.join(',') : '');
-  const sendPart = sessionId
-    ? 'Надіслати — профіль ' + arm + ', сесія триває: позаду ' + lastStep + ' ' +
-      turnsWord(lastStep) + ', наступний буде кроком ' + (lastStep + 1)
-    : 'Надіслати — профіль ' + arm + ', нова сесія без історії';
-  const cmpPart = (currentProfile === 'clean' && !pins.length)
-    ? 'clean vs профіль — профіль зараз clean і дефектів не ввімкнено, обидві руки будуть однакові; оберіть профіль заняття праворуч'
-    : 'clean vs профіль — те саме питання на clean і на ' + arm + ', обидві руки з нової сесії: один хід без історії розмови';
-  const serPart = '×5 — те саме питання ' + SERIES_RUNS + ' разів на ' + arm +
-    (currentProfile === 'clean' && !pins.length ? '' : ' і ' + SERIES_RUNS + ' разів на clean') +
-    ', кожен прогін з нової сесії; рахує, у скількох прогонах викликано кожен інструмент';
-  $('composerHint').textContent = sendPart + '. ' + cmpPart + '. ' + serPart + '.';
-  $('sendBtn').title = sendPart;
-  $('cmpBtn').title = cmpPart;
+  return currentProfile + (pins.length ? ' + ' + pins.join(',') : '');
+}
+function onBaseline(){ return activeCount === 0; }
+
+function renderComposerHint(){
+  const arm = armName();
+  const same = onBaseline();
+  $('composerHint').textContent = (sessionId ? t('sessionN', {n: lastStep, w: turnsWord(lastStep)}) : t('session0')) +
+    ' · ' + (sessionId || same ? t('enterSend') : t('enterCmp'));
+  $('sendBtn').textContent = t('askOnly', {p: arm});
+  $('sendBtn').title = t('sendCap', {p: arm});
+  $('cmpBtn').title = t('compareCap', {p: arm});
+  $('serBtn').title = same ? t('x5CapSingle') : t('x5Cap', {p: arm});
+  $('pairRight').textContent = arm;
+  $('samePairText').textContent = t('samePair', {p: arm});
+  $('samePair').hidden = !same || activeCount < 0;
+  $('cmpBtn').disabled = same;
+  $('inp').placeholder = $('msgs').querySelector('.msg.user') ? t('inputPhNext') : t('inputPh');
 }
 
 function fmtClock(iso){ return (iso || '—').slice(0, 16).replace('T', ' '); }
 
 function conditionRows(d){
   const c = d.clean, p = d.profile;
-  const defectsOf = function(s){ return s.active_defects.length ? s.active_defects.join(', ') : 'немає'; };
+  const defectsOf = function(s){ return s.active_defects.length ? s.active_defects.join(', ') : t('none'); };
   const promptOf = function(s){ return (s.prompt_version || '—').replace(/\+/g, ' +'); };
-  const sessionOf = function(s){ return s.step_number === 1 ? 'нова, без історії чату' : 'крок ' + s.step_number; };
+  const sessionOf = function(s){ return s.step_number === 1 ? t('newNoHistory') : t('step') + ' ' + s.step_number; };
   const retrievalOf = function(s){ return s.retrieval ? s.retrieval.index + ' / top_k ' + s.retrieval.top_k : '—'; };
   return [
-    ['профіль', c.profile, p.profile],
-    ['дефекти', defectsOf(c), defectsOf(p)],
-    ['промпт', promptOf(c), promptOf(p)],
-    ['сесія', sessionOf(c), sessionOf(p)],
-    ['час стенду', fmtClock(c.clock), fmtClock(p.clock)],
-    ['індекс пошуку', retrievalOf(c), retrievalOf(p)],
-    ['модель', c.model || '—', p.model || '—'],
+    [t('cProfile'), c.profile, p.profile],
+    [t('cDefects'), defectsOf(c), defectsOf(p)],
+    [t('cPrompt'), promptOf(c), promptOf(p)],
+    [t('cSession'), sessionOf(c), sessionOf(p)],
+    [t('cClock'), fmtClock(c.clock), fmtClock(p.clock)],
+    [t('cIndex'), retrievalOf(c), retrievalOf(p)],
+    [t('cModel'), c.model || '—', p.model || '—'],
   ];
 }
 
 function renderConditions(d){
-  const t = document.createElement('table');
-  t.className = 'cond';
-  const head = t.insertRow();
-  ['Умови прогону', 'clean', d.profile.profile, ''].forEach(function(h){
-    const th = document.createElement('th'); th.textContent = h; head.appendChild(th);
+  const tb = el('table', {cls: 'cond'});
+  const head = tb.insertRow();
+  [t('conditions'), d.clean.profile, d.profile.profile, ''].forEach(function(h){
+    head.appendChild(el('th', {text: h}));
   });
   const differing = [];
   conditionRows(d).forEach(function(row){
-    const tr = t.insertRow();
+    const tr = tb.insertRow();
     const same = row[1] === row[2];
-    if(!same){ tr.className = 'diffrow'; differing.push(row[0]); }
+    if(!same){ tr.className = 'diffrow'; differing.push(row); }
     row.forEach(function(v){ tr.insertCell().textContent = v; });
     const mark = tr.insertCell();
     mark.className = 'mark';
-    mark.textContent = same ? '= однаково' : '≠ різниться';
+    mark.textContent = same ? t('eq') : t('neq');
   });
-  return {table: t, differing: differing};
+  return {table: tb, differing: differing};
 }
 
-function verdictText(d, differing, textSame, toolDiffs){
-  const c = d.clean, p = d.profile;
-  let inputs;
-  if(!differing.length){
-    inputs = 'Умови обох рук однакові — профіль clean без дефектів, порівнювати нема з чим. Оберіть профіль заняття праворуч.';
-  }else{
-    inputs = 'У вході відрізняється: ' + differing.join(', ') + '; решта однакова.';
-    if(c.prompt_version === p.prompt_version && p.active_defects.length){
-      inputs += ' Промпт однаковий, тож ' + p.active_defects.join(', ') +
-        (p.active_defects.length > 1 ? ' сидять' : ' сидить') +
-        ' не в промпті — дивіться на інструменти і стан бази.';
-    }
+function verdictText(d, differing, textSame, toolDiffs, firstDiff){
+  const p = d.profile, c = d.clean;
+  let state = 'diff', out;
+  if(toolDiffs == null){ out = t('vUnknown', {t: textSame ? t('vTextSame') : t('vTextDiff')}); state = textSame ? 'same' : 'diff'; }
+  else if(textSame && !toolDiffs){ out = t('vSame'); state = 'same'; }
+  else if(textSame) out = t('vPayloadOnly');
+  else if(!toolDiffs) out = t('vTextOnly');
+  else out = firstDiff ? t('vBoth', {f: firstDiff}) : t('vBothShort');
+  const names = differing.map(function(r){ return r[0]; }).filter(function(n){ return n !== t('cProfile') && n !== t('cDefects'); });
+  if(names.length) out += ' ' + t('vInputs', {d: names.join(', ')});
+  if(state === 'diff' && c.prompt_version === p.prompt_version && p.active_defects.length){
+    out += ' ' + t('vPromptSame', {d: p.active_defects.join(', ')});
   }
-  let outputs;
-  if(toolDiffs == null) outputs = 'Результати інструментів звірити не вдалося.';
-  else if(textSame && !toolDiffs) outputs = 'Відповіді й результати інструментів однакові — цей запит дефект не зачіпає, спробуйте інший.';
-  else if(textSame) outputs = 'Текст відповіді однаковий, а результати інструментів розійшлися — дефект видно лише в payload.';
-  else if(!toolDiffs) outputs = 'Результати інструментів однакові, розійшовся лише текст — підсвічено нижче.';
-  else outputs = 'Розійшлися і текст, і результати інструментів.';
-  return inputs + ' ' + outputs;
+  return {state: state, text: out};
 }
 
 function inlineTokens(text){
   const re = /\*\*([^*]+)\*\*|`([^`]+)`/g;
   const out = [];
   const push = function(chunk, style){
-    chunk.split(/(\s+)/).forEach(function(t){ if(t) out.push({text: t, style: style}); });
+    chunk.split(/(\s+)/).forEach(function(tk){ if(tk) out.push({text: tk, style: style}); });
   };
   let last = 0, m;
   while((m = re.exec(text)) !== null){
@@ -549,9 +1161,9 @@ const DIFF_TOKEN_LIMIT = 400;
 function wordDiff(a, b){
   const n = a.length, m = b.length;
   if(n > DIFF_TOKEN_LIMIT || m > DIFF_TOKEN_LIMIT){
-    const words = function(ts){ return ts.filter(function(t){ return t.text.trim(); }).map(function(t){ return t.text; }).join(' '); };
-    return {left: a.map(function(t){ return {tok: t, op: 'same'}; }),
-            right: b.map(function(t){ return {tok: t, op: 'same'}; }),
+    const words = function(ts){ return ts.filter(function(x){ return x.text.trim(); }).map(function(x){ return x.text; }).join(' '); };
+    return {left: a.map(function(x){ return {tok: x, op: 'same'}; }),
+            right: b.map(function(x){ return {tok: x, op: 'same'}; }),
             skipped: true, changed: words(a) !== words(b)};
   }
   const dp = [];
@@ -578,8 +1190,8 @@ function wordDiff(a, b){
   return {left: left, right: right, skipped: false, changed: changed};
 }
 
-function renderMarked(marked, el, highlight){
-  el.textContent = '';
+function renderMarked(marked, box, highlight){
+  box.textContent = '';
   marked.forEach(function(m){
     let node;
     if(m.tok.style){
@@ -594,7 +1206,7 @@ function renderMarked(marked, el, highlight){
       w.appendChild(node);
       node = w;
     }
-    el.appendChild(node);
+    box.appendChild(node);
   });
 }
 
@@ -604,182 +1216,306 @@ function toolSummary(arm){
   const parts = Object.keys(arm.tool_counts).sort().map(function(name){
     return name + ' ' + arm.tool_counts[name] + '/' + arm.runs.length;
   });
-  return parts.length ? parts.join(' · ') : 'жодного інструмента не викликано';
+  return parts.length ? parts.join(' · ') : t('noToolsCalled');
 }
 
-function renderSeriesArm(holder, label, arm){
-  const col = document.createElement('div');
-  col.className = 'col ' + (arm.active_defects.length ? 'dirty' : 'clean');
-  const h = document.createElement('h3');
-  h.textContent = arm.profile +
-    (arm.active_defects.length ? ' · ' + arm.active_defects.join(',') : ' · без дефектів') +
-    ' · ' + arm.runs.length + ' прогонів';
-  col.appendChild(h);
-  const summary = document.createElement('div');
-  summary.className = 'verdict on';
-  summary.textContent = 'інструменти викликано: ' + toolSummary(arm);
-  col.appendChild(summary);
-  const table = document.createElement('table');
-  table.className = 'ptable';
-  const head = document.createElement('tr');
-  ['#', 'інструменти', 'відповідь', 'трейс'].forEach(function(t){
-    const th = document.createElement('th'); th.textContent = t; head.appendChild(th);
+function answerSignature(run){
+  const nums = (run.answer || '').match(/\d[\d,.  ]*\d|\d/g) || [];
+  const clean = nums.map(function(s){ return s.replace(/[,  ]/g, '').replace(/\.$/, ''); });
+  const sig = clean.filter(function(v, i){ return clean.indexOf(v) === i; });
+  return {key: sig.length ? sig.join('|') : 'tools:' + run.tools_called.join(','), label: sig.slice(0, 2).join(' · ')};
+}
+
+function letterFor(registry, key){
+  if(!(key in registry)) registry[key] = String.fromCharCode(65 + Object.keys(registry).length);
+  return registry[key];
+}
+
+function renderSeriesArm(holder, label, arm, side, registry){
+  const col = el('div', {cls: 'side-col ' + side});
+  col.appendChild(el('div', {cls: 'side-h'}, [el('span', {cls: 'dot'}), el('span', {cls: 'nm', text: arm.profile}),
+    arm.active_defects.length ? el('span', {cls: 'muted mono', text: arm.active_defects.join(',')}) : null]));
+  const letters = arm.runs.map(function(r){ return letterFor(registry, answerSignature(r).key); });
+  const groups = {};
+  letters.forEach(function(l, i){ (groups[l] = groups[l] || {n: 0, label: answerSignature(arm.runs[i]).label}).n += 1; });
+  const top = Math.max.apply(null, Object.keys(groups).map(function(k){ return groups[k].n; }));
+  const major = Object.keys(groups).filter(function(k){ return groups[k].n === top; })[0];
+  col.appendChild(el('div', {cls: 'x5-same'}, [el('b', {text: t('x5Same', {k: top, n: arm.runs.length})}), el('span', {cls: 'note', text: t('x5SameSub')})]));
+  col.appendChild(el('div', {cls: 'letters', 'aria-label': letters.join(' ')}, letters.map(function(l){
+    return el('span', {cls: l === major ? '' : 'alt', text: l}); })));
+  col.appendChild(el('div', {cls: 'groups'}, Object.keys(groups).sort().map(function(l){
+    return el('div', {}, [el('b', {text: l}), ' · ' + (groups[l].label || '—') + ' · ×' + groups[l].n]); })));
+  const bars = el('div', {cls: 'bars'});
+  const names = Object.keys(arm.tool_counts).sort();
+  if(!names.length) bars.appendChild(el('span', {cls: 'note', text: toolSummary(arm), style: 'grid-column:1/-1'}));
+  names.forEach(function(name){
+    const k = arm.tool_counts[name];
+    bars.appendChild(el('span', {text: name}));
+    bars.appendChild(el('span', {cls: 'bar'}, [el('i', {style: 'width:' + Math.round(100 * k / arm.runs.length) + '%'})]));
+    bars.appendChild(el('span', {text: k + '/' + arm.runs.length}));
   });
-  table.appendChild(head);
+  col.appendChild(bars);
+  const runs = el('div', {cls: 'runs'});
   arm.runs.forEach(function(run, i){
-    const tr = document.createElement('tr');
-    const n = document.createElement('td'); n.textContent = String(i + 1); tr.appendChild(n);
-    const tools = document.createElement('td');
-    tools.textContent = run.tools_called.length ? run.tools_called.join(', ') : '—';
-    tr.appendChild(tools);
-    const ans = document.createElement('td');
-    renderRich(run.answer || '(порожньо)', ans);
-    tr.appendChild(ans);
-    const tr8 = document.createElement('td');
-    const a = document.createElement('a');
-    a.textContent = run.request_id.slice(0, 8);
-    a.onclick = function(){ loadTrace(run.request_id); };
-    tr8.appendChild(a);
-    tr.appendChild(tr8);
-    table.appendChild(tr);
+    const body = el('div', {cls: 'run-a', hidden: true});
+    renderRich(run.answer || t('emptyRun'), body);
+    const caret = el('span', {cls: 'caret', text: '▸'});
+    const head = el('button', {cls: 'run-h', 'aria-expanded': 'false'}, [
+      el('span', {cls: 'muted', text: '#' + (i + 1)}), el('b', {text: letters[i]}),
+      el('span', {cls: 'tools', text: run.tools_called.length ? run.tools_called.join(', ') : '—'}),
+      el('a', {text: run.request_id.slice(0, 8), onclick: function(ev){ ev.stopPropagation(); openTrace(run.request_id); }}), caret]);
+    head.onclick = function(){
+      body.hidden = !body.hidden;
+      head.setAttribute('aria-expanded', String(!body.hidden));
+      caret.textContent = body.hidden ? '▸' : '▾';
+    };
+    runs.appendChild(el('div', {cls: 'run'}, [head, body]));
   });
-  col.appendChild(table);
-  const m = document.createElement('div');
-  m.className = 'meta';
+  col.appendChild(runs);
+  const m = el('div', {cls: 'meta', hidden: true});
   m.textContent = 'in ' + arm.usage.input_tokens + ' / out ' + arm.usage.output_tokens +
-    ' tok' + costPart(arm.usage.cost_usd) + ' · ' + Math.round(arm.elapsed_ms) +
-    ' ms · промпт ' + arm.prompt_version;
+    ' tok' + costPart(arm.usage.cost_usd) + ' · ' + (Math.round(arm.elapsed_ms) / 1000).toFixed(1) +
+    ' ' + t('sec') + ' · ' + t('promptV') + ' ' + arm.prompt_version;
   col.appendChild(m);
   addSpend(arm.usage.cost_usd);
   holder.appendChild(col);
+  return {letters: letters, meta: m};
 }
 
-async function series(){
-  const inp = $('inp'), text = inp.value.trim();
-  if(!text){ addMsg('Введіть запит, який треба прогнати ' + SERIES_RUNS + ' разів', 'err'); return; }
-  inp.value = '';
-  addMsg(text, 'user');
-  $('serBtn').disabled = true; $('cmpBtn').disabled = true; $('sendBtn').disabled = true;
-  const holder = document.createElement('div');
-  holder.className = 'msg cmp';
-  holder.textContent = 'ганяю ' + SERIES_RUNS + ' разів… це до ' + (SERIES_RUNS * 2) +
-    ' викликів моделі, зачекайте';
-  $('msgs').appendChild(holder);
-  $('msgs').scrollTop = $('msgs').scrollHeight;
+function seriesVerdict(left, right, ls, rs){
+  if(!right) return {state: 'same', text: t('x5Single', {n: left.runs.length})};
+  const dist = function(ls2){ const c = {}; ls2.forEach(function(l){ c[l] = (c[l] || 0) + 1; }); return c; };
+  const a = dist(ls), b = dist(rs), parts = [];
+  const keys = Object.keys(Object.assign({}, a, b)).sort();
+  if(keys.some(function(k){ return (a[k] || 0) !== (b[k] || 0); })){
+    parts.push(t('x5Groups', {l: keys.join('/'), r: keys.map(function(k){ return (a[k] || 0) + '→' + (b[k] || 0); }).join(', ')}));
+  }
+  const tools = Object.keys(Object.assign({}, left.tool_counts, right.tool_counts)).sort();
+  tools.forEach(function(name){
+    const x = left.tool_counts[name] || 0, y = right.tool_counts[name] || 0;
+    if(x !== y) parts.push(t('x5Tools', {t: name, a: x + '/' + left.runs.length, b: y + '/' + right.runs.length}));
+  });
+  return parts.length ? {state: 'diff', text: t('x5VerdictDiff', {d: parts.join('; ')})}
+                      : {state: 'same', text: t('x5VerdictSame', {n: left.runs.length})};
+}
+
+async function series(question){
+  const inp = $('inp');
+  const raw = typeof question === 'string' ? question : inp.value.trim();
+  if(!raw){ inp.focus(); return; }
+  const composed = typeof question === 'string' ? {message: raw, cust: ''} : composeMessage(raw);
+  if(typeof question !== 'string'){ inp.value = ''; addUser(raw, composed.cust); }
+  setBusy(true);
+  const holder = el('section', {cls: 'card msg'});
+  const waitLine = el('div', {cls: 'card-head'}, [el('span', {cls: 'dots'}, [el('i'), el('i'), el('i')]),
+    el('span', {cls: 'muted', text: t('x5Running', {n: SERIES_RUNS, m: SERIES_RUNS * 2})})]);
+  holder.appendChild(waitLine);
+  appendNode(holder);
   try{
-    const body = {message: text, runs: SERIES_RUNS};
-    const onClean = currentProfile === 'clean' && !extraDefects.size;
-    if(!onClean) body.profile = 'clean';
+    const body = {message: composed.message, runs: SERIES_RUNS};
+    if(!onBaseline()) body.profile = 'clean';
     const d = await api('/api/_test/series', jpost(body));
     holder.textContent = '';
-    renderSeriesArm(holder, 'current', d.arms.current);
-    if(d.arms.profile) renderSeriesArm(holder, 'profile', d.arms.profile);
-    const note = document.createElement('div');
-    note.className = 'hl';
-    note.textContent = 'Різниця між профілями — це різниця частот, не одна пара відповідей. ' +
-      'Прогін, у якому агент перепитав, теж рахується: так виглядає похибка еталона.';
-    holder.appendChild(note);
+    if(extraDefects.size) d.arms.current.extra = Array.from(extraDefects).join(',');
+    const left = d.arms.profile || d.arms.current, right = d.arms.profile ? d.arms.current : null;
+    const head = el('div', {cls: 'card-head'}, [
+      el('h3', {}, [el('span', {cls: 'mono', text: '×' + d.runs}), el('span', {cls: 'tag-l mono', text: left.profile}),
+        right ? el('span', {cls: 'muted', text: '↔'}) : null, right ? el('span', {cls: 'tag-r mono', text: armLabel(right)}) : null]),
+      el('span', {cls: 'cap mono', text: t('x5Title', {n: d.runs})}), el('span', {cls: 'grow'})]);
+    holder.appendChild(head);
+    const verdictBox = el('div', {cls: 'verdict'});
+    holder.appendChild(verdictBox);
+    const cols = el('div', {cls: 'x5-cols' + (right ? '' : ' one')});
+    holder.appendChild(cols);
+    const registry = {};
+    const L = renderSeriesArm(cols, 'left', left, 'l', registry);
+    const R = right ? renderSeriesArm(cols, 'right', right, 'r', registry) : null;
+    const v = seriesVerdict(left, right, L.letters, R ? R.letters : null);
+    verdictBox.appendChild(el('span', {cls: 'vpill' + (v.state === 'diff' ? ' diff' : ''), text: v.state === 'diff' ? t('x5FreqDiff') : t('x5FreqSame')}));
+    verdictBox.appendChild(el('p', {text: v.text}));
+    const evidence = function(){
+      const lines = [t('evQuestion') + ': ' + composed.message, '×' + d.runs + ' · ' + left.profile + (right ? ' ↔ ' + armLabel(right) : ''), v.text, ''];
+      [left, right].filter(Boolean).forEach(function(arm, k){
+        const ls = k ? R.letters : L.letters;
+        lines.push(armLabel(arm) + ' · ' + toolSummary(arm));
+        arm.runs.forEach(function(r, i){ lines.push('  #' + (i + 1) + ' ' + ls[i] + ' · ' + r.tools_called.join(', ') + ' · ' + t('evTrace') + ' ' + r.request_id); });
+      });
+      return lines.join('\n');
+    };
+    head.appendChild(el('button', {text: t('reference'), onclick: function(){ openReference(tierFromRuns(left)); }}));
+    head.appendChild(el('button', {text: t('copyEvidence'), onclick: function(){ copyText(evidence(), this); }}));
+    const foot = el('div', {cls: 'actions'});
+    foot.appendChild(el('span', {cls: 'note grow', text: t('x5Note')}));
+    const tt = el('button', {'aria-expanded': 'false', text: '▸ ' + t('tokensTime')});
+    tt.onclick = function(){
+      const open = L.meta.hidden;
+      [L, R].filter(Boolean).forEach(function(x){ x.meta.hidden = !open; });
+      tt.setAttribute('aria-expanded', String(open));
+      tt.textContent = (open ? '▾ ' : '▸ ') + t('tokensTime');
+    };
+    foot.appendChild(tt);
+    holder.appendChild(foot);
     sessionId = null;
+    lastStep = 0;
+    renderComposerHint();
   }catch(e){
-    holder.textContent = 'Помилка: ' + e.message;
-    holder.classList.add('err');
+    errorBlock(holder, e, function(){ series(composed.message); });
   }finally{
-    $('serBtn').disabled = false; $('cmpBtn').disabled = false; $('sendBtn').disabled = false;
+    setBusy(false);
     inp.focus();
   }
 }
 
-async function compare(){
-  const inp = $('inp'), text = inp.value.trim();
-  if(!text){ addMsg('Введіть запит, який треба порівняти', 'err'); return; }
-  inp.value = '';
-  addMsg(text, 'user');
-  $('cmpBtn').disabled = true; $('sendBtn').disabled = true;
-  const holder = document.createElement('div');
-  holder.className = 'msg cmp';
-  holder.textContent = 'порівнюю…';
-  $('msgs').appendChild(holder);
-  $('msgs').scrollTop = $('msgs').scrollHeight;
+function armLabel(arm){ return arm.profile + (arm.extra ? ' + ' + arm.extra : ''); }
+
+function tierFromRuns(arm){
+  const m = (arm.runs[0] && arm.runs[0].answer || '').match(/tier[123]/);
+  return m ? m[0] : customerTier();
+}
+
+function setBusy(on){
+  $('sendBtn').disabled = on;
+  $('cmpBtn').disabled = on || onBaseline();
+  document.querySelectorAll('.x5btn').forEach(function(b){ b.disabled = on; });
+}
+
+async function compare(retryText){
+  const inp = $('inp'), raw = typeof retryText === 'string' ? retryText : inp.value.trim();
+  if(!raw){ inp.focus(); return; }
+  if(onBaseline()){ renderComposerHint(); return; }
+  const composed = typeof retryText === 'string' ? {message: raw, cust: ''} : composeMessage(raw);
+  if(typeof retryText !== 'string'){ inp.value = ''; addUser(raw, composed.cust); }
+  const text = composed.message;
+  setBusy(true);
+  const holder = el('section', {cls: 'card msg'});
+  holder.appendChild(el('div', {cls: 'card-head'}, [el('span', {cls: 'dots'}, [el('i'), el('i'), el('i')]), el('span', {cls: 'muted', text: t('comparing')})]));
+  appendNode(holder);
   try{
     const d = await api('/api/_test/compare', jpost({message:text}));
     holder.textContent = '';
-    const cond = renderConditions(d);
-    holder.appendChild(cond.table);
-    const verdict = document.createElement('div');
-    verdict.className = 'verdict';
-    verdict.textContent = 'звіряю результати інструментів…';
-    holder.appendChild(verdict);
-    const explainBox = document.createElement('div');
-    explainBox.className = 'explain';
-    holder.appendChild(explainBox);
-    const explained = showExplanation(explainBox, text, d);
+    holder.setAttribute('aria-label', d.clean.profile + ' ↔ ' + d.profile.profile);
+    const rightName = d.profile.profile + (d.profile.active_defects.length && extraDefects.size ? ' + ' + Array.from(extraDefects).join(',') : '');
+    const head = el('div', {cls: 'card-head'}, [
+      el('h3', {}, [el('span', {cls: 'tag-l mono', text: d.clean.profile}), el('span', {cls: 'muted', text: '↔'}), el('span', {cls: 'tag-r mono', text: rightName})]),
+      el('span', {cls: 'cap mono', text: t('oneTurn', {t: fmtClock(d.clean.clock)})})]);
+    holder.appendChild(head);
+    const verdictBox = el('div', {cls: 'verdict'});
+    const pill = el('span', {cls: 'vpill wait', text: t('checkingNow')});
+    const verdict = el('p', {text: t('vChecking')});
+    verdictBox.appendChild(pill);
+    verdictBox.appendChild(verdict);
+    holder.appendChild(verdictBox);
+    const pdiffBox = el('div', {cls: 'pdiff'});
+    holder.appendChild(pdiffBox);
 
-    const diff = wordDiff(inlineTokens(d.clean.answer || '(порожньо)'),
-                          inlineTokens(d.profile.answer || '(порожньо)'));
-    const hl = document.createElement('label');
-    hl.className = 'hl';
-    const cb = document.createElement('input');
-    cb.type = 'checkbox'; cb.checked = !diff.skipped; cb.disabled = diff.skipped;
-    hl.appendChild(cb);
-    hl.appendChild(document.createTextNode(diff.skipped
-      ? 'підсвітка різниці вимкнена: відповідь довша за ' + DIFF_TOKEN_LIMIT + ' слів'
-      : 'підсвітити різницю у відповідях: закреслене є лише на clean, зелене — лише на профілі'));
-    holder.appendChild(hl);
+    const diff = wordDiff(inlineTokens(d.clean.answer || t('emptyRun')),
+                          inlineTokens(d.profile.answer || t('emptyRun')));
+    let hlOn = !diff.skipped;
+    const hlBtn = el('button', {role: 'switch', 'aria-checked': String(hlOn)}, [el('span', {cls: 'switch'}), t('highlight')]);
+    const hlBar = el('div', {cls: 'hlbar'}, diff.skipped ? [t('hlSkipped', {n: DIFF_TOKEN_LIMIT})] : [hlBtn,
+      el('span', {}, [el('span', {cls: 'ddel mono', text: '0.9%'}), ' ' + t('legendDel')]),
+      el('span', {}, [el('span', {cls: 'dadd mono', text: '1.5%'}), ' ' + t('legendAdd')])]);
+    hlBar.hidden = !diff.changed;
+    holder.appendChild(hlBar);
 
+    const cols = el('div', {cls: 'cmp-cols'});
     const bodies = {};
-    [['clean', 'clean', 'left'], ['profile', 'dirty', 'right']].forEach(function(pair){
+    [['clean', 'l', 'left', t('etalon')], ['profile', 'r', 'right', t('checking')]].forEach(function(pair){
       const side = d[pair[0]];
-      const col = document.createElement('div');
-      col.className = 'col ' + pair[1];
-      const h = document.createElement('h3');
-      h.textContent = side.profile +
-        (side.active_defects.length ? ' · ' + side.active_defects.join(',') : ' · без дефектів');
-      col.appendChild(h);
-      const body = document.createElement('div');
-      renderMarked(diff[pair[2]], body, cb.checked);
+      const col = el('div', {cls: 'side-col ' + pair[1]});
+      col.appendChild(el('div', {cls: 'side-h'}, [el('span', {cls: 'dot'}), el('span', {cls: 'nm', text: pair[0] === 'clean' ? side.profile : rightName}),
+        el('span', {cls: 'role', text: pair[3]})]));
+      const body = el('div', {cls: 'answer'});
+      renderMarked(diff[pair[2]], body, hlOn);
       bodies[pair[2]] = body;
       col.appendChild(body);
-      const m = document.createElement('div');
-      m.className = 'meta';
-      const a = document.createElement('a');
-      // the id, not just the word: a student records it to reproduce the run
-      a.textContent = 'трейс ' + side.request_id.slice(0, 8);
-      a.onclick = function(){ loadTrace(side.request_id); };
-      m.appendChild(document.createTextNode(
-        'in ' + side.usage.input_tokens + ' / out ' + side.usage.output_tokens + ' tok' +
-        costPart(side.usage.cost_usd) +
-        (side.elapsed_ms != null ? ' · ' + Math.round(side.elapsed_ms) + ' ms' : '') +
-        ' · промпт ' + side.prompt_version + ' · '));
-      m.appendChild(a);
-      col.appendChild(m);
-      holder.appendChild(col);
+      col.appendChild(metaLine(side, openTrace));
+      cols.appendChild(col);
       addSpend(side.usage.cost_usd);
     });
-    cb.onchange = function(){
-      renderMarked(diff.left, bodies.left, cb.checked);
-      renderMarked(diff.right, bodies.right, cb.checked);
+    holder.appendChild(cols);
+    hlBtn.onclick = function(){
+      hlOn = !hlOn;
+      hlBtn.setAttribute('aria-checked', String(hlOn));
+      renderMarked(diff.left, bodies.left, hlOn);
+      renderMarked(diff.right, bodies.right, hlOn);
     };
-    sessionId = null;   // compare runs in throwaway sessions
+
+    const actions = el('div', {cls: 'actions'});
+    const copyBtn = el('button', {text: t('copyEvidence')});
+    const refBtn = el('button', {'aria-pressed': 'false', text: t('reference')});
+    const detBtn = el('button', {'aria-expanded': 'false'}, [el('span', {cls: 'muted', text: '▸ '}), el('b', {text: t('details')})]);
+    const x5 = el('button', {cls: 'x5btn', text: t('repeat5'), onclick: function(){ series(text); }});
+    actions.appendChild(copyBtn);
+    actions.appendChild(refBtn);
+    actions.appendChild(detBtn);
+    actions.appendChild(el('span', {cls: 'grow'}));
+    actions.appendChild(el('span', {cls: 'note', text: t('doubt')}));
+    actions.appendChild(x5);
+    holder.appendChild(actions);
+
+    const details = el('div', {cls: 'details', hidden: true});
+    const cond = renderConditions(d);
+    details.appendChild(cond.table);
+    const explainBox = el('div', {cls: 'explain'});
+    details.appendChild(explainBox);
+    const rawBox = el('div', {cls: 'sec'});
+    details.appendChild(rawBox);
+    holder.appendChild(details);
+    detBtn.onclick = function(){
+      details.hidden = !details.hidden;
+      detBtn.setAttribute('aria-expanded', String(!details.hidden));
+      detBtn.firstChild.textContent = details.hidden ? '▸ ' : '▾ ';
+    };
+    detBtn.title = t('detailsSub');
+    const explained = showExplanation(explainBox, text, d);
+
+    sessionId = null;
     lastStep = 0;
     renderComposerHint();
-    const toolDiffs = await showPayloadDiff(holder, d.clean.request_id, d.profile.request_id);
-    verdict.textContent = verdictText(d, cond.differing, !diff.changed, toolDiffs);
-    if(cond.differing.length && (diff.changed || toolDiffs)) verdict.classList.add('on');
+    const pd = await showPayloadDiff(pdiffBox, d.clean.request_id, d.profile.request_id, d, rawBox);
+    lastCompareTier = pd.tier || customerTier();
+    const v = verdictText(d, cond.differing, !diff.changed, pd.count, pd.first);
+    pill.className = 'vpill' + (v.state === 'diff' ? ' diff' : '');
+    pill.textContent = v.state === 'diff' ? t('differ') : t('same');
+    verdict.textContent = v.text;
+    if(v.state === 'same') verdictBox.appendChild(el('button', {cls: 'primary x5btn', text: t('runX5'), onclick: function(){ series(text); }}));
+    refBtn.onclick = function(){
+      const open = $('refDrawer').hidden;
+      if(open) openReference(lastCompareTier); else closeReference();
+      refBtn.setAttribute('aria-pressed', String(open));
+    };
+    copyBtn.onclick = function(){
+      copyText(compareEvidence(text, d, v.text, cond.differing, pd.rows), copyBtn);
+    };
     await explained;
   }catch(e){
-    holder.textContent = 'Помилка: ' + e.message;
-    holder.classList.add('err');
+    errorBlock(holder, e, function(){ compare(text); });
   }finally{
-    $('cmpBtn').disabled = false; $('sendBtn').disabled = false; inp.focus();
+    setBusy(false);
+    inp.focus();
   }
 }
 
+function compareEvidence(question, d, verdict, differing, rows){
+  const lines = [t('evQuestion') + ': ' + question, d.clean.profile + ' ↔ ' + d.profile.profile + ' · ' + fmtClock(d.clean.clock), verdict, ''];
+  [['clean', d.clean], ['profile', d.profile]].forEach(function(p){
+    lines.push(p[1].profile + ' · ' + t('evTrace') + ' ' + p[1].request_id + ' · ' + t('promptV') + ' ' + p[1].prompt_version);
+    lines.push(p[1].answer || '');
+    lines.push('');
+  });
+  lines.push(t('evConditions') + ':');
+  if(!differing.length) lines.push('  ' + t('evNone'));
+  differing.forEach(function(r){ lines.push('  ' + r[0] + ': ' + r[1] + ' → ' + r[2]); });
+  lines.push(t('evDiffs') + ':');
+  if(!rows || !rows.length) lines.push('  ' + t('evNone'));
+  (rows || []).forEach(function(r){ lines.push('  ' + r[0] + ' · ' + r[1] + ': ' + r[2] + ' → ' + r[3]); });
+  return lines.join('\n');
+}
+
 async function showExplanation(box, message, d){
-  const h = document.createElement('h4');
-  h.textContent = 'Смислова різниця';
-  box.appendChild(h);
-  const body = document.createElement('div');
-  body.textContent = 'легка модель звіряє відповіді й результати інструментів…';
+  box.appendChild(el('h4', {text: t('explainTitle')}));
+  const body = el('div', {text: t('explainWait')});
   box.appendChild(body);
   try{
     const r = await api('/api/_test/compare/explain', jpost({
@@ -787,23 +1523,19 @@ async function showExplanation(box, message, d){
       clean: {request_id: d.clean.request_id, answer: d.clean.answer || ''},
       profile: {request_id: d.profile.request_id, answer: d.profile.answer || ''}}));
     body.textContent = '';
-    renderRich(r.explanation || '(модель нічого не відповіла)', body);
-    const src = document.createElement('div');
-    src.className = 'src';
-    src.textContent = 'пояснення моделі ' + (r.model || '—') +
+    renderRich(r.explanation || t('explainNone'), body);
+    const src = el('div', {cls: 'src'});
+    src.textContent = (r.model || '—') +
       (r.usage ? ' · in ' + r.usage.input_tokens + ' / out ' + r.usage.output_tokens + ' tok' +
-                 costPart(r.usage.cost_usd) : '') +
-      ' — це думка моделі, а не перевірка: звірте її з підсвіткою й таблицею інструментів нижче';
+                 costPart(r.usage.cost_usd) : '') + ' — ' + t('explainNote');
     box.appendChild(src);
     if(r.usage) addSpend(r.usage.cost_usd);
   }catch(e){
     box.classList.add('err');
-    body.textContent = 'Смислове пояснення недоступне: ' + e.message +
-      '. Різниця нижче показана без нього.';
+    body.textContent = t('explainFail', {m: e.message});
   }
 }
 
-// Collect tool spans keyed by name + arguments, so the two runs can be paired.
 function toolIndex(tree){
   const out = {};
   (function walk(n){
@@ -839,91 +1571,107 @@ function toolLabel(key){
   return name + (args === '{}' ? '()' : '(' + clip(args, 48) + ')');
 }
 
-// The headline lesson of this stand is that the prose can match while the
-// payload does not — and finding that meant loading each trace, hunting the
-// span and holding the first number in your head. The diff is computable from
-// what compare already returned, so it is shown.
-async function showPayloadDiff(holder, cleanId, dirtyId){
-  const note = document.createElement('div');
-  note.className = 'pdiff';
-  note.textContent = 'порівнюю результати інструментів…';
-  holder.appendChild(note);
+function refHint(field, ra, rb){
+  if(!reference) return '';
+  const src = Object.assign({}, rb || {}, ra || {});
+  const leaf = field.split('.').pop();
+  const tier = src.tier;
+  let v;
+  if(leaf === 'spread_pct' && tier && src.allowance_applied === false) v = reference.FX_SPREAD_PCT[tier];
+  else if(leaf === 'daily_limit_eur' && tier) v = reference.DAILY_LIMIT_EUR[tier];
+  else if(leaf === 'monthly_limit_eur' && tier) v = reference.MONTHLY_LIMIT_EUR[tier];
+  else if(leaf === 'allowance_total_eur' && tier) v = reference.FX_FREE_MONTHLY_ALLOWANCE_EUR[tier];
+  else if(leaf === 'window_days' && src.reason_code) v = reference.DISPUTE_WINDOWS_DAYS[src.reason_code];
+  else if((leaf === 'flat_fee_eur' || leaf === 'percent_fee') && src.transfer_type && reference.TRANSFER_FEES[src.transfer_type]) v = reference.TRANSFER_FEES[src.transfer_type][leaf];
+  if(v === undefined) return '';
+  const k = leaf === 'window_days' ? src.reason_code : leaf.indexOf('fee') >= 0 ? src.transfer_type : tier;
+  return t('refFor', {k: k, v: v});
+}
+
+async function showPayloadDiff(note, cleanId, dirtyId, d, rawBox){
+  note.textContent = '';
+  note.appendChild(el('strong', {text: t('whatDiffered')}));
+  const status = el('span', {cls: 'note', text: t('diffChecking')});
+  note.appendChild(status);
   try{
     const a = toolIndex(await api('/api/_test/traces/' + cleanId));
     const b = toolIndex(await api('/api/_test/traces/' + dirtyId));
     const rows = [];
+    let tier = '';
     Object.keys(b).forEach(function(key){
-      if(!(key in a)){ rows.push([toolLabel(key), '—', 'не викликано', 'викликано']); return; }
+      if(b[key] && b[key].tier) tier = tier || b[key].tier;
+      if(!(key in a)){ rows.push([toolLabel(key), '—', t('notCalled'), t('called'), '']); return; }
       const fa = flatten(a[key], '', {}), fb = flatten(b[key], '', {});
       Object.keys(fb).forEach(function(f){
-        if(fa[f] !== fb[f]) rows.push([toolLabel(key), f, fa[f] === undefined ? '—' : fa[f], fb[f]]);
+        if(fa[f] !== fb[f]) rows.push([toolLabel(key), f, fa[f] === undefined ? '—' : fa[f], fb[f], refHint(f, a[key], b[key])]);
       });
       Object.keys(fa).forEach(function(f){
-        if(!(f in fb)) rows.push([toolLabel(key), f, fa[f], '—']);
+        if(!(f in fb)) rows.push([toolLabel(key), f, fa[f], '—', '']);
       });
     });
     Object.keys(a).forEach(function(key){
-      if(!(key in b)) rows.push([toolLabel(key), '—', 'викликано', 'не викликано']);
+      if(a[key] && a[key].tier) tier = tier || a[key].tier;
+      if(!(key in b)) rows.push([toolLabel(key), '—', t('called'), t('notCalled'), '']);
     });
-    note.textContent = '';
-    const h = document.createElement('strong');
-    h.textContent = rows.length
-      ? 'Результати інструментів розходяться (' + rows.length + '):'
-      : 'Результати інструментів однакові — розбіжність, якщо є, лише в тексті.';
-    note.appendChild(h);
-    if(rows.length){
-      const t = document.createElement('table');
-      t.className = 'ptable';
-      const head = t.insertRow();
-      ['інструмент', 'поле', 'clean', 'профіль'].forEach(function(x){
-        const th = document.createElement('th'); th.textContent = x; head.appendChild(th);
-      });
+    const toolRows = rows.length;
+    if(d.clean.prompt_version !== d.profile.prompt_version) rows.push([t('fPrompt'), '', d.clean.prompt_version, d.profile.prompt_version, '']);
+    status.remove();
+    if(!rows.length) note.appendChild(el('span', {cls: 'note', text: t('sameAll')}));
+    else{
+      const g = el('div', {cls: 'dgrid'});
       rows.slice(0, 12).forEach(function(r){
-        const tr = t.insertRow();
-        r.forEach(function(v){
-          const td = tr.insertCell();
-          td.textContent = clip(v, CELL_LIMIT);
-          if(String(v).length > CELL_LIMIT) td.title = String(v);
-        });
+        const field = r[1] ? r[0] + ' · ' + r[1] : r[0];
+        g.appendChild(el('span', {cls: 'muted', text: clip(field, 80), title: field}));
+        g.appendChild(el('span', {cls: 'vl', text: clip(r[2], CELL_LIMIT), title: String(r[2]).length > CELL_LIMIT ? String(r[2]) : null}));
+        g.appendChild(el('span', {cls: 'muted', text: '→'}));
+        g.appendChild(el('span', {cls: 'vr', text: clip(r[3], CELL_LIMIT), title: String(r[3]).length > CELL_LIMIT ? String(r[3]) : null}));
+        g.appendChild(el('span', {cls: 'refnote', text: r[4] || ''}));
       });
-      note.appendChild(t);
-      if(rows.length > 12){
-        const d = document.createElement('div');
-        d.textContent = '… ще ' + (rows.length - 12);
-        note.appendChild(d);
-      }
+      note.appendChild(g);
+      if(rows.length > 12) note.appendChild(el('span', {cls: 'note', text: t('moreRows', {n: rows.length - 12})}));
     }
-    return rows.length;
+    renderRaw(rawBox, a, b);
+    return {count: toolRows, first: rows.length && rows[0][1] ? rows[0][1] + ' ' + rows[0][2] + ' → ' + rows[0][3] : '', rows: rows, tier: tier};
   }catch(e){
-    note.textContent = 'Не вдалося порівняти результати інструментів: ' + e.message;
-    return null;
+    status.textContent = t('diffFail', {m: e.message});
+    return {count: null, first: '', rows: [], tier: ''};
   }
+}
+
+function renderRaw(box, a, b){
+  box.textContent = '';
+  const names = Object.keys(Object.assign({}, a, b)).map(function(k){ return k.split(' ')[0].slice(5); });
+  box.appendChild(el('span', {cls: 'sub-h', text: t('rawPayloads') + (names.length ? ' · ' + names.filter(function(n, i){ return names.indexOf(n) === i; }).join(', ') : '')}));
+  const fmt = function(idx){
+    const keys = Object.keys(idx);
+    if(!keys.length) return t('noTools');
+    return keys.map(function(k){ return toolLabel(k) + ' → ' + JSON.stringify(idx[k], null, 1); }).join('\n\n');
+  };
+  box.appendChild(el('div', {cls: 'raw'}, [el('pre', {cls: 'l', text: fmt(a)}), el('pre', {cls: 'r', text: fmt(b)})]));
 }
 
 function newSession(){
   sessionId = null;
   lastStep = 0;
-  $('msgs').innerHTML = '';
-  addMsg('Нова сесія — історія діалогу очищена', 'sys');
+  $('msgs').textContent = '';
+  renderEmpty();
+  addMsg(t('sysNewSession'), 'sys');
   renderComposerHint();
 }
 
 async function loadTrace(id){
   try{
     lastTrace = await api('/api/_test/traces/' + id);
+    $('traceId').textContent = id.slice(0, 8);
     renderTree(lastTrace);
   }catch(e){
-    $('tree').textContent = 'трейс недоступний';
+    $('tree').textContent = t('traceNA');
   }
 }
 
 function renderTree(tree){
   const box = $('tree');
-  box.innerHTML = '';
-  // A retry loop renders as nine identical llm.call rows, and the thing that
-  // tells them apart sits in the attributes — one click per row to find it.
-  // The loop step and the repeat count are already in the data, so the tree
-  // shows them: that pattern IS what a budget assertion is written against.
+  box.textContent = '';
   const seen = {};
   const walk = function(n, depth, path){
     const line = document.createElement('div');
@@ -938,62 +1686,45 @@ function renderTree(tree){
     line.appendChild(span);
 
     const a = n.attributes || {};
-    let note = '', noteColor = 'var(--muted)';
+    let note = '', rep = false;
     if(n.name === 'llm.call' && a['agent.loop_step'] !== undefined){
       const step = String(a['agent.loop_step']);
       if(step.indexOf('retry-') === 0){
-        note = 'повтор ' + step.slice(6);
-        noteColor = '#ff8f8f';
+        note = t('retryN', {n: step.slice(6)});
+        rep = true;
       }else{
-        note = 'крок ' + step;
+        note = t('step') + ' ' + step;
       }
     }
     if(n.name.indexOf('tool.') === 0){
       const key = n.name + ' ' + JSON.stringify(a['tool.arguments'] || {});
       seen[key] = (seen[key] || 0) + 1;
       if(seen[key] > 1){
-        note = 'повтор ' + (seen[key] - 1) + ', ті самі аргументи';
-        noteColor = '#ff8f8f';
+        note = t('sameArgs', {n: seen[key] - 1});
+        rep = true;
       }else if(a['retrieval.index']){
         note = a['retrieval.index'] + ' / top_k ' + a['retrieval.top_k'];
       }
     }
-    if(note){
-      const m = document.createElement('span');
-      m.style.color = noteColor;
-      m.textContent = '  ' + note;
-      line.appendChild(m);
-    }
-
-    if(n.duration_ms != null){
-      const t = document.createElement('span');
-      t.style.color = 'var(--muted)';
-      t.textContent = '  ' + n.duration_ms + 'ms';
-      line.appendChild(t);
-    }
+    if(note) line.appendChild(el('span', {cls: rep ? 'rep' : '', text: '  ' + note}));
+    if(n.duration_ms != null) line.appendChild(el('span', {text: '  ' + n.duration_ms + 'ms'}));
     box.appendChild(line);
     (a['retrieval.fragments'] || []).forEach(function(f){
-      const fl = document.createElement('div');
-      fl.className = 'frag';
-      fl.textContent = '  '.repeat(depth + 1) + f.id + ' · ' + f.score + ' · ' + (f.text || '');
-      box.appendChild(fl);
+      box.appendChild(el('div', {cls: 'frag', text: '  '.repeat(depth + 1) + f.id + ' · ' + f.score + ' · ' + (f.text || '')}));
     });
     if(a['retrieval.index'] && !(a['retrieval.fragments'] || []).length){
-      const fl = document.createElement('div');
-      fl.className = 'frag';
-      fl.textContent = '  '.repeat(depth + 1) + 'жодного фрагмента не знайдено';
-      box.appendChild(fl);
+      box.appendChild(el('div', {cls: 'frag', text: '  '.repeat(depth + 1) + t('noFrag')}));
     }
     (n.children || []).forEach(function(c, i){ walk(c, depth + 1, path.concat(i)); });
   };
   walk(tree, 0, []);
-  $('attrs').style.display = 'none';
+  $('attrs').hidden = true;
 }
 
 function showAttrs(path){
   let node = lastTrace;
   for(const i of path) node = node.children[i];
-  $('attrs').style.display = 'block';
+  $('attrs').hidden = false;
   $('attrs').textContent = JSON.stringify(node.attributes, null, 2);
 }
 
@@ -1010,67 +1741,89 @@ async function refreshState(){
   }
   const d = results[0], h = results[1], c = results[2],
         sum = results[3], ret = results[4];
+  health = h;
   profileDefects = new Set(d.profile_defects);
   extraDefects = new Set(d.extra_defects);
+  defectDetails = d.details || {};
   currentProfile = d.profile;
+  activeCount = d.active.length;
+  knownProfiles = d.known_profiles || [];
   standLocked = !!h.locked;
   isAdmin = !!h.admin;
-  $('pProfile').textContent = 'profile: ' + d.profile +
-    (h.scope === 'request' ? ' · мої налаштування' : ' · типові стенду');
-  $('resetBtn').style.display = (standLocked && !isAdmin) ? 'none' : '';
-  $('adminRow').style.display = (standLocked && !isAdmin) ? '' : 'none';
-  $('scopeHint').textContent = standLocked
-    ? (isAdmin ? 'Ви лектор: серверні дії відкриті. Профіль та інші налаштування все одно діють лише у цьому браузері.'
-               : 'Спільний стенд: профіль, дефекти, час і пошук діють лише у цьому браузері; інші студенти їх не бачать. Стенд без налаштувань стартує як ' + h.startup_profile + '.')
-    : 'Налаштування діють лише у цьому браузері; серверні типові — у .env стенду (' + h.startup_profile + ').';
-  $('pDefects').textContent = d.active.length
-    ? 'дефекти: ' + d.active.join(',') : 'дефектів немає';
-  $('pDefects').className = 'pill ' + (d.active.length ? 'on' : 'clean');
-  $('pProvider').textContent = h.provider + (h.otlp ? ' · phoenix' : '');
-  $('pClock').textContent = (c.now || '').slice(0,16).replace('T',' ');
-  $('dCount').textContent = '(активних ' + d.active.length + ')';
+  standClock = c.now || '';
 
-  const sel = $('profileSel');
-  if(!sel.options.length){
-    d.known_profiles.forEach(function(p){ sel.add(new Option(p, p)); });
-  }
-  sel.value = d.profile;
+  $('profileName').textContent = d.profile;
+  $('profileDesc').textContent = profileDesc(d.profile);
+  $('whatDiffers').hidden = activeCount === 0;
+  renderProfileList();
+  $('lectItem').hidden = !standLocked;
+  $('lectBadge').hidden = !isAdmin;
+  $('lectBadge').textContent = t('lecturerBadge');
+  $('adminRow').hidden = !standLocked || isAdmin;
+  $('lecturerOn').hidden = !(standLocked && isAdmin);
+  $('resetBox').hidden = standLocked && !isAdmin;
+  $('scopeHint').textContent = standLocked
+    ? (isAdmin ? t('scopeAdmin') : t('scopeLocked', {p: h.startup_profile}))
+    : t('scopeLocal', {p: h.startup_profile});
+  $('standInfo').textContent = t('standInfo', {p: h.provider, o: h.otlp ? t('otlpOn') : t('otlpOff')});
+  $('dCount').textContent = t('dCount', {p: d.profile_defects.length, e: d.extra_defects.length});
+  $('refClock').textContent = t('refClock', {t: fmtClock(standClock)});
+  $('clockInp').value = c.request_override || '';
+  $('clockInp').placeholder = standClock;
   renderDefects(d);
 
-  // Show the real values, not placeholders. Empty fields beside a placeholder
-  // of "8" and "4" told a lecturer the defaults were in force while the stand
-  // was folding at 3 and searching a broken index — the same failure the
-  // course teaches: the display looked right, the state was not.
   $('sumInp').value = sum.summarize_after_steps;
   $('topkInp').value = ret.top_k;
   $('idxSel').value = ret.requested_index || '';
+  $('sumNote').textContent = sum.summarize_after_steps !== 8 ? t('changedDefault', {v: 8}) : t('defaultIs', {v: 8});
+  $('topkNote').textContent = ret.top_k !== 4 ? t('changedDefault', {v: 4}) : t('defaultIs', {v: 4});
 
-  // And a knob off its default must not hide behind a closed panel.
   const off = [];
-  if(sum.summarize_after_steps !== 8) off.push('згортка ' + sum.summarize_after_steps);
+  if(d.extra_defects.length) off.push(t('knobDefects', {d: d.extra_defects.join(',')}));
+  if(c.request_override) off.push(t('knobClock', {t: fmtClock(c.now)}));
+  if(sum.summarize_after_steps !== 8) off.push(t('knobSum', {n: sum.summarize_after_steps}));
   if(ret.top_k !== 4) off.push('top_k ' + ret.top_k);
-  if(ret.requested_index) off.push('індекс ' + ret.requested_index);
+  if(ret.requested_index) off.push(t('knobIdx', {i: ret.requested_index}));
   const pk = $('pKnobs');
-  pk.textContent = off.length ? off.join(' · ') : '';
-  pk.style.display = off.length ? '' : 'none';
-  pk.className = 'pill ' + (off.length ? 'on' : '');
+  $('knobsText').textContent = off.join(' · ');
+  pk.hidden = !off.length;
+  $('advBadge').hidden = !off.length;
+  $('advBadge').textContent = String(off.length);
   renderComposerHint();
+  renderEmpty();
   if(promptMode) showPrompt(promptMode);
+}
+
+function profileDesc(p){
+  const d = t('pdesc');
+  if(d[p]) return d[p];
+  const m = /^lesson-(\d+)$/.exec(p);
+  return m ? t('pdescLesson', {n: m[1]}) : t('pdescOther');
+}
+
+function renderProfileList(){
+  const box = $('profileList');
+  box.textContent = '';
+  knownProfiles.forEach(function(p){
+    box.appendChild(el('button', {cls: 'opt', role: 'option', 'aria-selected': String(p === currentProfile),
+      onclick: function(){ closePops(); if(p !== currentProfile) setProfile(p); }},
+      [el('b', {text: p}), el('span', {text: profileDesc(p)})]));
+  });
 }
 
 function renderDefects(d){
   const box = $('defects');
-  box.innerHTML = '';
+  box.textContent = '';
   ALL_IDS = d.all_defects || ALL_IDS;
   ALL_IDS.forEach(function(id){
-    const s = document.createElement('span');
     const inProfile = profileDefects.has(id), on = extraDefects.has(id);
-    s.className = 'dchip' + (inProfile ? ' profile' : (on ? ' active' : ''));
-    s.textContent = id;
+    const s = el('button', {cls: 'dchip' + (inProfile ? ' profile' : (on ? ' active' : '')), text: id,
+      'aria-pressed': String(inProfile || on)});
     const info = d.details[id];
-    s.title = info ? [info.title, info.layer, info.determinism]
-                       .filter(Boolean).join(' · ') || id : id;
-    if(!inProfile) s.onclick = function(){ toggleDefect(id); };
+    s.title = info ? [id, info.title, info.layer, info.determinism]
+                       .filter(Boolean).join(' · ') : id;
+    if(inProfile) s.setAttribute('aria-disabled', 'true');
+    else s.onclick = function(){ toggleDefect(id); };
     box.appendChild(s);
   });
 }
@@ -1080,16 +1833,15 @@ async function toggleDefect(id){
   if(next.has(id)) next.delete(id); else next.add(id);
   try{
     await applySettings(withSetting('defects', Array.from(next).join(',')));
-    freshSession('Дефекти поверх профілю: ' + (next.size ? Array.from(next).join(',') : 'немає'));
+    freshSession(t('defectsOver', {d: next.size ? Array.from(next).join(',') : t('none')}));
   }catch(e){ fail(e); }
   refreshState();
 }
 
-async function setProfile(){
-  const p = $('profileSel').value;
+async function setProfile(p){
   try{
     await applySettings(withSetting('profile', p));
-    freshSession('Профіль перемкнено на ' + p);
+    freshSession(t('profileSwitched', {p: p}));
   }catch(e){ fail(e); }
   refreshState();
 }
@@ -1099,18 +1851,18 @@ async function setClock(reset){
   try{
     await applySettings(withSetting('clock', v));
     const st = await api('/api/_test/clock');
-    freshSession('Час прогону: ' + (st.now || 'реальний час системи'));
+    freshSession(t('clockSet', {t: st.now || t('realClock')}));
     refreshState();
   }catch(e){ fail(e); }
 }
 
 async function setSummarize(){
   const v = parseInt($('sumInp').value.trim(), 10);
-  if(!v || v < 1){ addMsg('Вкажіть номер кроку, після якого згортати (>= 1)', 'err'); return; }
+  if(!v || v < 1){ addMsg(t('sumBad'), 'err'); return; }
   try{
     await applySettings(withSetting('summarize_after', v));
     const r = await api('/api/_test/summarize_after');
-    freshSession('Згортка історії після кроку ' + r.summarize_after_steps);
+    freshSession(t('sumSet', {n: r.summarize_after_steps}));
     refreshState();
   }catch(e){ fail(e); }
 }
@@ -1121,15 +1873,14 @@ async function setRetrieval(){
   const wantIdx = $('idxSel').value;
   try{
     await applySettings(withSetting('index', wantIdx));
-    await applySettings(withSetting('top_k', wantK));
+    await applySettings(withSetting('top_k', wantK === 4 && !settings.top_k ? null : wantK));
     const r = await api('/api/_test/retrieval');
-    freshSession('Пошук: top_k ' + r.top_k + ', індекс ' + r.index);
+    freshSession(t('searchSet', {k: r.top_k, i: r.index}));
     if(wantK && r.top_k !== wantK){
-      addMsg('Профіль заняття примусово задає top_k=' + r.top_k + '; ваше значення ' + wantK +
-             ' не діє, поки цей профіль активний', 'err');
+      addMsg(t('topkForced', {k: r.top_k, w: wantK}), 'err');
     }
     if(!wantIdx && r.index === 'kb_broken'){
-      addMsg('Профіль заняття задає індекс kb_broken; оберіть kb_clean явно, якщо треба порівняти', 'sys');
+      addMsg(t('brokenIdx'), 'sys');
     }
     refreshState();
   }catch(e){ fail(e); }
@@ -1138,7 +1889,7 @@ async function setRetrieval(){
 function resetMySettings(){
   settings = {};
   saveSettings();
-  freshSession('Налаштування цього браузера скинуто до типових стенду');
+  freshSession(t('settingsReset'));
   refreshState();
 }
 
@@ -1148,13 +1899,20 @@ async function setAdmin(){
   $('adminInp').value = '';
   try{
     const h = await api('/health');
-    addMsg(h.admin ? 'Токен лектора прийнято: серверні дії відкриті' : 'Токен не підійшов', h.admin ? 'sys' : 'err');
+    addMsg(h.admin ? t('tokenOk') : t('tokenBad'), h.admin ? 'sys' : 'err');
     if(!h.admin){ adminToken = ''; writeStore(ADMIN_KEY, null); }
   }catch(e){ fail(e); }
   refreshState();
 }
 
-let promptMode = null, promptRequest = 0;
+function signOut(){
+  adminToken = '';
+  writeStore(ADMIN_KEY, null);
+  closePops();
+  refreshState();
+}
+
+let promptMode = null, promptRequest = 0, diffAll = false;
 
 function cleanSettingsHeader(){
   const next = Object.assign({}, settings, {profile: 'clean', defects: ''});
@@ -1181,24 +1939,63 @@ function lineDiff(a, b){
   return out;
 }
 
+function withContext(lines, around){
+  const keep = lines.map(function(){ return false; });
+  lines.forEach(function(l, i){
+    if(l.op === 'same') return;
+    for(let k = Math.max(0, i - around); k <= Math.min(lines.length - 1, i + around); k++) keep[k] = true;
+  });
+  const out = [];
+  let skipped = 0;
+  lines.forEach(function(l, i){
+    if(keep[i]){
+      if(skipped) out.push({op: 'skip', text: t('sameLines', {n: skipped})});
+      skipped = 0;
+      out.push(l);
+    }else skipped += 1;
+  });
+  if(skipped) out.push({op: 'skip', text: t('sameLines', {n: skipped})});
+  return out;
+}
+
 function renderPromptLines(box, lines){
   box.textContent = '';
   lines.forEach(function(l){
     const row = document.createElement('span');
     row.className = 'pl' + (l.op === 'same' ? '' : ' ' + l.op);
-    row.textContent = (l.op === 'add' ? '+ ' : l.op === 'del' ? '− ' : '  ') + (l.text || ' ');
+    const g = document.createElement('span');
+    g.className = 'g';
+    g.textContent = l.op === 'add' ? '+' : l.op === 'del' ? '−' : '';
+    const tx = document.createElement('span');
+    tx.textContent = l.text || ' ';
+    row.appendChild(g);
+    row.appendChild(tx);
     box.appendChild(row);
   });
 }
 
+function setDiffMode(all){
+  diffAll = all;
+  if(promptMode) showPrompt(promptMode);
+}
+
 async function showPrompt(mode){
   promptMode = mode;
-  ['profile', 'clean', 'diff'].forEach(function(m){
-    $('pm' + m.charAt(0).toUpperCase() + m.slice(1)).classList.toggle('sel', m === mode);
+  [['diff', 'pmDiff'], ['profile', 'pmProfile'], ['clean', 'pmClean']].forEach(function(m){
+    $(m[1]).setAttribute('aria-selected', String(m[0] === mode));
   });
-  const box = $('promptBox');
   const ticket = ++promptRequest;
-  if(!mode){ box.style.display = 'none'; $('promptMeta').textContent = ''; return; }
+  if(!mode){ $('overview').hidden = true; $('overview').classList.remove('full'); return; }
+  $('overview').hidden = false;
+  $('ovTitle').textContent = t('ovTitle', {p: armName(), c: 'clean'});
+  $('pmProfile').textContent = t('tabProfile', {p: armName()});
+  $('pmClean').textContent = t('tabClean');
+  $('dmChanges').setAttribute('aria-pressed', String(!diffAll));
+  $('dmAll').setAttribute('aria-pressed', String(diffAll));
+  $('diffMode').hidden = mode !== 'diff';
+  $('ovSide').hidden = mode !== 'diff';
+  $('ovBody').classList.toggle('single', mode !== 'diff');
+  const box = $('promptBox');
   try{
     const pair = await Promise.all([
       api('/api/_test/prompt'),
@@ -1209,122 +2006,280 @@ async function showPrompt(mode){
     const added = diff.filter(function(l){ return l.op === 'add'; }).length;
     const removed = diff.filter(function(l){ return l.op === 'del'; }).length;
     if(mode === 'diff'){
-      const changed = diff.filter(function(l){ return l.op !== 'same'; });
-      if(changed.length) renderPromptLines(box, changed);
-      else box.textContent = 'Промпт профілю ' + currentProfile + ' збігається з clean.';
+      if(added || removed) renderPromptLines(box, diffAll ? diff : withContext(diff, 2));
+      else box.textContent = t('promptSame', {p: currentProfile});
+      renderOverviewSide(added, removed);
     }else{
       box.textContent = (mode === 'clean' ? clean : mine).text;
     }
-    box.style.display = 'block';
     const shown = mode === 'clean' ? clean : mine;
-    $('promptMeta').textContent = (mode === 'diff' ? currentProfile + ' проти clean' : shown.version) +
-      ' · від clean: +' + added + ' / −' + removed + ' рядків';
+    $('promptMeta').textContent = (mode === 'diff' ? clean.version + ' → ' + mine.version : shown.version) +
+      ' · ' + t('linesFromClean', {a: added, d: removed});
   }catch(e){ fail(e); }
 }
+
+function renderOverviewSide(added, removed){
+  const side = $('ovSide');
+  side.textContent = '';
+  if(activeCount === 0){ side.appendChild(el('p', {cls: 'note', text: t('ovClean')})); return; }
+  side.appendChild(el('div', {cls: 'sec'}, [el('span', {cls: 'k', text: t('ovLines')}),
+    el('div', {cls: 'counts'}, [el('span', {cls: 'a', text: '+' + added}), el('span', {cls: 'd', text: '−' + removed})])]));
+  const ids = Array.from(new Set(Array.from(profileDefects).concat(Array.from(extraDefects)))).sort();
+  const layers = {};
+  ids.forEach(function(id){ const l = (defectDetails[id] || {}).layer; if(l) layers[l] = (layers[l] || 0) + 1; });
+  const names = t('layerNames') || {};
+  const ls = el('div', {cls: 'sec'}, [el('span', {cls: 'k', text: t('ovLayers')})]);
+  if(Object.keys(layers).length){
+    const g = el('div', {cls: 'layers'});
+    Object.keys(layers).sort().forEach(function(l){
+      g.appendChild(el('span', {text: names[l] || l}));
+      g.appendChild(el('span', {cls: 'mono', text: String(layers[l])}));
+    });
+    ls.appendChild(g);
+    ls.appendChild(el('span', {cls: 'note', text: t('ovLayersNote')}));
+  }else{
+    ls.appendChild(el('span', {cls: 'note', text: t('ovNoLayers')}));
+  }
+  side.appendChild(ls);
+  side.appendChild(el('div', {cls: 'sec'}, [el('span', {cls: 'k', text: t('ovDefects')}),
+    el('span', {cls: 'mono', text: ids.length ? ids.join(', ') : t('none')})]));
+  const m = /^lesson-(\d+)$/.exec(currentProfile);
+  if(m) side.appendChild(el('div', {cls: 'sec'}, [el('span', {cls: 'k', text: t('ovLessons')}), el('span', {cls: 'tag-r mono', style: 'align-self:flex-start', text: 'L' + m[1]})]));
+}
+
+function openOverview(){ closePops(); showPrompt('diff'); }
+function toggleFull(){ $('overview').classList.toggle('full'); }
 
 async function resetState(){
   try{
     const r = await api('/api/_test/reset', {method:'POST'});
+    closePops();
     newSession();
-    addMsg('Стан скинуто до seed ' + r.seed_version + ': ' + r.customers +
-           ' клієнтів, ' + r.accounts + ' рахунків, ' + r.transactions +
-           ' транзакцій', 'sys');
+    addMsg(t('stateReset', {v: r.seed_version, c: r.customers, a: r.accounts, t: r.transactions}), 'sys');
   }catch(e){ fail(e); }
 }
 
 async function loadSeed(){
   try{
     const s = await api('/api/_test/seed');
-    const byCust = {};
+    customers = s.customers;
+    accountsOf = {};
     s.accounts.forEach(function(a){
-      if(!byCust[a.customer_id]) byCust[a.customer_id] = [];
-      byCust[a.customer_id].push(a);
+      if(!accountsOf[a.customer_id]) accountsOf[a.customer_id] = [];
+      accountsOf[a.customer_id].push(a);
     });
-    $('seed').innerHTML = s.customers.map(function(c){
-      const accs = (byCust[c.id] || []).map(function(a){
-        return a.id + ' ' + a.currency; }).join(', ');
-      const hold = c.compliance_hold
-        ? ' · <span style="color:var(--bad)">hold</span>' : '';
-      return '<b>' + c.id + '</b> ' + c.tier + hold + '<br>&nbsp;&nbsp;' + accs;
-    }).join('<br>');
     const tiers = {};
     s.customers.forEach(function(c){ tiers[c.tier] = (tiers[c.tier] || 0) + 1; });
     const holds = s.customers.filter(function(c){ return c.compliance_hold; }).length;
-    $('seedSum').textContent = s.customers.length + ' клієнтів · ' + s.accounts.length +
-      ' рахунків · ' + s.transaction_count + ' транзакцій · ' +
-      Object.keys(tiers).sort().map(function(t){ return t + ' ×' + tiers[t]; }).join(', ') +
-      (holds ? ' · compliance hold: ' + holds : '') +
-      '. Агент не знає, хто ви: ID клієнта називайте в повідомленні.';
-  }catch(e){ $('seed').textContent = 'недоступно'; }
+    $('seedSum').textContent = s.customers.length + ' · ' + s.accounts.length + ' · ' + s.transaction_count + ' — ' +
+      Object.keys(tiers).sort().map(function(k){ return k + ' ×' + tiers[k]; }).join(', ') +
+      (holds ? ' · compliance hold: ' + holds : '');
+    $('seedSum').title = 'customers · accounts · transactions';
+    if(ui.customer && !customers.some(function(c){ return c.id === ui.customer; })){ ui.customer = ''; saveUi(); }
+    renderCustomers();
+  }catch(e){ $('seed').textContent = t('unavailable'); }
 }
 
-function refTable(title, head, rows){
-  const wrap = document.createElement('div');
-  const t = document.createElement('table');
-  const h = document.createElement('tr');
-  [title].concat(head).forEach(function(cell, i){
-    const th = document.createElement('th');
-    th.textContent = cell;
-    if(i) th.className = 'num';
-    h.appendChild(th);
+function customerTier(){
+  const c = customers.filter(function(x){ return x.id === ui.customer; })[0];
+  return c ? c.tier : '';
+}
+
+function renderCustomers(){
+  const box = $('seed');
+  box.textContent = '';
+  const row = function(id, tier, acc, hold, value){
+    const r = el('div', {cls: 'cust-row', role: 'option', 'aria-selected': String(ui.customer === value), tabindex: '0'}, [
+      el('span', {text: id}), el('span', {cls: 'muted', text: tier}), el('span', {cls: 'muted', text: acc}),
+      el('span', {style: 'color:var(--err)', text: hold})]);
+    r.onclick = function(){ pickCustomer(value); };
+    r.onkeydown = function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); pickCustomer(value); } };
+    box.appendChild(r);
+  };
+  row('—', t('noCustomer'), '', '', '');
+  customers.forEach(function(c){
+    row(c.id, c.tier, (accountsOf[c.id] || []).map(function(a){ return a.id + ' ' + a.currency; }).join(', '), c.compliance_hold ? 'hold' : '', c.id);
   });
-  t.appendChild(h);
+  const tier = customerTier();
+  $('custLabel').textContent = ui.customer ? ui.customer + (tier ? ' · ' + tier : '') : t('noCustomer');
+}
+
+function pickCustomer(id){
+  ui.customer = id;
+  saveUi();
+  renderCustomers();
+  closePops();
+  $('inp').focus();
+}
+
+function openCustomers(){ togglePop('custPop', $('custBtn'), true); }
+
+function refTable(title, head, rows, hit){
+  const wrap = el('div', {cls: 'sec'}, [el('h3', {text: title})]);
+  const tb = el('table');
+  const h = el('tr');
+  head.forEach(function(cell, i){ h.appendChild(el('th', {cls: i ? 'num' : '', text: cell})); });
+  tb.appendChild(h);
   rows.forEach(function(r){
-    const tr = document.createElement('tr');
-    r.forEach(function(cell, i){
-      const td = document.createElement('td');
-      td.textContent = cell;
-      if(i) td.className = 'num';
-      tr.appendChild(td);
-    });
-    t.appendChild(tr);
+    const tr = el('tr', {cls: r[0] === hit ? 'hit' : ''});
+    r.forEach(function(cell, i){ tr.appendChild(el('td', {cls: i ? 'num' : '', text: cell})); });
+    tb.appendChild(tr);
   });
-  wrap.appendChild(t);
+  wrap.appendChild(tb);
   return wrap;
 }
 
 async function loadReference(){
-  const box = $('ref');
   try{
-    const r = await api('/api/_test/reference');
-    box.textContent = '';
-    const tiers = Object.keys(r.FX_SPREAD_PCT).sort();
-    const eur = function(v){ return Number(v).toLocaleString('uk-UA'); };
-    box.appendChild(refTable('тір', ['спред, %', 'FX без спреду, EUR/міс', 'ліміт, EUR/день', 'ліміт, EUR/міс'],
-      tiers.map(function(t){
-        return [t, String(r.FX_SPREAD_PCT[t]), eur(r.FX_FREE_MONTHLY_ALLOWANCE_EUR[t]),
-                eur(r.DAILY_LIMIT_EUR[t]), eur(r.MONTHLY_LIMIT_EUR[t])];
-      })));
-    box.appendChild(refTable('переказ', ['фіксовано, EUR', '+ % від суми'],
-      Object.keys(r.TRANSFER_FEES).map(function(k){
-        const f = r.TRANSFER_FEES[k];
-        return [k, String(f.flat_fee_eur), String(f.percent_fee)];
-      })));
-    box.appendChild(refTable('причина спору', ['вікно, днів'],
-      Object.keys(r.DISPUTE_WINDOWS_DAYS).map(function(k){
-        return [k, String(r.DISPUTE_WINDOWS_DAYS[k])];
-      })));
-    box.appendChild(refTable('валюта', ['до EUR'],
-      Object.keys(r.RATES_TO_EUR).map(function(k){
-        return [k, String(r.RATES_TO_EUR[k])];
-      })));
-  }catch(e){ box.textContent = 'недоступно: ' + e.message; }
+    reference = await api('/api/_test/reference');
+    renderReference('');
+  }catch(e){ $('ref').textContent = t('unavailable') + ': ' + e.message; }
+}
+
+function renderReference(hit){
+  const box = $('ref');
+  const r = reference;
+  if(!r){ box.textContent = t('loading'); return; }
+  box.textContent = '';
+  const tiers = Object.keys(r.FX_SPREAD_PCT).sort();
+  const num = function(v){ return Number(v).toLocaleString(ui.lang === 'en' ? 'en-US' : 'uk-UA'); };
+  box.appendChild(refTable(t('refFx'), [t('tier'), t('spread'), t('freeFx')],
+    tiers.map(function(k){ return [k, String(r.FX_SPREAD_PCT[k]), num(r.FX_FREE_MONTHLY_ALLOWANCE_EUR[k])]; }), hit));
+  box.appendChild(refTable(t('refLimits'), [t('tier'), t('perDay'), t('perMonth')],
+    tiers.map(function(k){ return [k, num(r.DAILY_LIMIT_EUR[k]), num(r.MONTHLY_LIMIT_EUR[k])]; }), hit));
+  box.appendChild(refTable(t('refFees'), [t('type'), t('flat'), t('pct')],
+    Object.keys(r.TRANSFER_FEES).map(function(k){
+      const f = r.TRANSFER_FEES[k];
+      return [k, String(f.flat_fee_eur), String(f.percent_fee)];
+    }), hit));
+  box.appendChild(refTable(t('refDisputes'), [t('reason'), t('days')],
+    Object.keys(r.DISPUTE_WINDOWS_DAYS).map(function(k){ return [k, String(r.DISPUTE_WINDOWS_DAYS[k])]; }), hit));
+  box.appendChild(refTable(t('refRates'), [t('currency'), 'EUR'],
+    Object.keys(r.RATES_TO_EUR).map(function(k){ return [k, String(r.RATES_TO_EUR[k])]; }), hit));
+}
+
+function openReference(hit){
+  $('advPanel').hidden = true;
+  renderReference(hit || customerTier());
+  $('refDrawer').hidden = false;
+}
+function closeReference(){
+  $('refDrawer').hidden = true;
+  document.querySelectorAll('.actions button[aria-pressed]').forEach(function(b){ b.setAttribute('aria-pressed', 'false'); });
+}
+function openAdvanced(){
+  $('refDrawer').hidden = true;
+  $('advPanel').hidden = false;
+  if(!lastTrace) $('tree').textContent = t('traceEmpty');
+}
+function closeAdvanced(){ $('advPanel').hidden = true; }
+
+let openPop = null, popJustOpened = false;
+function togglePop(id, btn, forceOpen){
+  const pop = $(id);
+  const willOpen = forceOpen || pop.hidden;
+  closePops();
+  if(!willOpen) return;
+  pop.hidden = false;
+  if(btn) btn.setAttribute('aria-expanded', 'true');
+  openPop = {pop: pop, btn: btn};
+  popJustOpened = true;
+  setTimeout(function(){ popJustOpened = false; }, 0);
+}
+function closePops(){
+  ['profileList', 'menu', 'lectPop', 'custPop'].forEach(function(id){ $(id).hidden = true; });
+  ['profileBtn', 'menuBtn', 'custBtn'].forEach(function(id){ $(id).setAttribute('aria-expanded', 'false'); });
+  openPop = null;
+}
+document.addEventListener('click', function(e){
+  if(!openPop || popJustOpened) return;
+  if(openPop.pop.contains(e.target) || (openPop.btn && openPop.btn.contains(e.target))) return;
+  closePops();
+});
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Escape') return;
+  if(openPop){ const b = openPop.btn; closePops(); if(b) b.focus(); return; }
+  if(!$('overview').hidden){ showPrompt(null); return; }
+  if(!$('refDrawer').hidden){ closeReference(); return; }
+  if(!$('advPanel').hidden) closeAdvanced();
+});
+
+function applyTheme(){
+  const root = document.documentElement;
+  if(ui.theme) root.setAttribute('data-theme', ui.theme); else root.removeAttribute('data-theme');
+  if(ui.projector) root.setAttribute('data-scale', 'projector'); else root.removeAttribute('data-scale');
+  const dark = ui.theme ? ui.theme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  $('themeLight').setAttribute('aria-pressed', String(!dark));
+  $('themeDark').setAttribute('aria-pressed', String(dark));
+  $('projBtn').setAttribute('aria-checked', String(!!ui.projector));
+}
+function setTheme(v){ ui.theme = v; saveUi(); applyTheme(); }
+function toggleProjector(){ ui.projector = !ui.projector; saveUi(); applyTheme(); }
+
+function applyLang(){
+  document.documentElement.lang = ui.lang;
+  document.querySelectorAll('[data-i18n]').forEach(function(n){ n.textContent = t(n.getAttribute('data-i18n')); });
+  $('langUk').setAttribute('aria-pressed', String(ui.lang === 'uk'));
+  $('langEn').setAttribute('aria-pressed', String(ui.lang === 'en'));
+  $('adminInp').placeholder = t('tokenPh');
+  $('custBtn').title = t('custTip');
+  $('whatDiffers').textContent = t('whatDiffers');
+  if(currentProfile !== '—') $('profileDesc').textContent = profileDesc(currentProfile);
+  renderProfileList();
+  renderSpend();
+  renderCustomers();
+  if(reference) renderReference('');
+  if(lastTrace) renderTree(lastTrace);
+  renderComposerHint();
+  renderEmpty();
+}
+function setLang(v){ ui.lang = v; saveUi(); applyLang(); refreshState(); }
+
+const EXAMPLES = ['Convert 6000 EUR to USD.', 'What are my daily and monthly transfer limits?', 'What is the fee for a SWIFT transfer of 1,000 EUR?'];
+
+function renderEmpty(){
+  const msgs = $('msgs');
+  const old = $('emptyState');
+  if(msgs.querySelector('.msg.user, .card') ) { if(old) old.remove(); return; }
+  const box = el('div', {cls: 'empty', id: 'emptyState'});
+  box.appendChild(el('h1', {text: t('emptyTitle')}));
+  if(activeCount <= 0) box.appendChild(el('p', {text: t('emptyClean')}));
+  else{
+    const p = el('p');
+    const parts = t('emptyBody').split(/(\{c\}|\{p\})/);
+    parts.forEach(function(s){
+      if(s === '{c}') p.appendChild(el('code', {text: 'clean'}));
+      else if(s === '{p}') p.appendChild(el('code', {text: armName()}));
+      else if(s) p.appendChild(document.createTextNode(s));
+    });
+    box.appendChild(p);
+  }
+  const ex = el('div', {cls: 'examples'}, [el('span', {cls: 'muted', text: t('tryLabel')})]);
+  EXAMPLES.forEach(function(q){
+    ex.appendChild(el('button', {text: q, onclick: function(){
+      if(!ui.customer && customers.length) pickCustomer('CUS-0005');
+      $('inp').value = q;
+      $('inp').focus();
+    }}));
+  });
+  box.appendChild(ex);
+  box.appendChild(el('p', {cls: 'note', text: t('emptyNote')}));
+  if(old) old.replaceWith(box); else msgs.appendChild(box);
 }
 
 $('inp').addEventListener('keydown', function(e){
-  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); send(); }
+  if(e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    if(e.metaKey || e.ctrlKey || sessionId || onBaseline()) send(); else compare();
+  }
 });
 
+applyTheme();
+applyLang();
+renderSpend();
 refreshState();
 loadSeed();
 loadReference();
-addMsg('Стенд готовий. clean — це агент без інжектованих дефектів, а не гарантовано правильна відповідь: ' +
-       'модель має власну похибку, тож доказ — різниця частот, а не одна пара відповідей.', 'sys');
-addMsg('Профіль, дефекти, час і пошук, які ви задаєте праворуч, діють лише у цьому браузері; ' +
-       'інші студенти працюють зі своїми.', 'sys');
-addMsg('«clean vs профіль» ставить одне питання на обидва профілі поруч — один хід без історії, тож продовження ' +
-       'діалогу ставте кнопкою «Надіслати» в одній сесії; «×5» — п\'ять разів із нової сесії ' +
-       'й рахує, у скількох прогонах викликано кожен інструмент.', 'sys');
 $('inp').focus();
 </script>
 </body>
