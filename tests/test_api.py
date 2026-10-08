@@ -255,7 +255,7 @@ def test_ui_keeps_settings_in_the_browser_and_sends_them_as_a_header():
     for fn in ("setProfile", "toggleDefect", "setClock", "setSummarize", "setRetrieval"):
         body = ui.split("async function " + fn)[1].split("\n}\n")[0]
         assert "jput(" not in body, f"{fn} still writes server-wide state"
-    assert "function series" in ui and "series(text)" in ui
+    assert "function series" in ui and 'id="serBtn"' in ui
     assert "retrieval.fragments" in ui
     assert "resetBtn" in ui and "adminRow" in ui
     for fn in ("setProfile", "toggleDefect", "setClock", "setSummarize", "setRetrieval"):

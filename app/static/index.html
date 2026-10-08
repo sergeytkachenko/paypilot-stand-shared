@@ -382,6 +382,7 @@
       <div class="msep"></div>
       <button class="mi" role="menuitem" onclick="closePops();openAdvanced()"><span><span data-i18n="advanced"></span><small data-i18n="advancedSub"></small></span><span class="badge" id="advBadge" hidden></span></button>
       <button class="mi" role="menuitem" onclick="closePops();openCustomers()"><span><span data-i18n="customersLink"></span><small data-i18n="customersSub"></small></span></button>
+      <button class="mi" role="menuitem" onclick="closePops();openReference(lastCompareTier || customerTier())"><span><span data-i18n="reference"></span><small data-i18n="referenceSub"></small></span></button>
       <div class="msep"></div>
       <button class="mi" role="menuitem" id="lectItem" hidden onclick="closePops();togglePop('lectPop', $('menuBtn'))"><span data-i18n="lecturer"></span><span class="badge" id="lectBadge" hidden></span></button>
       <a class="mi" role="menuitem" href="/docs" target="_blank" rel="noopener"><span data-i18n="apiLink"></span><span class="caret">↗</span></a>
@@ -426,6 +427,7 @@
           <span class="pair" id="pairView"><span class="tag-l">clean</span><span class="muted">↔</span><span class="tag-r" id="pairRight">—</span></span>
           <span class="cap" id="composerHint"></span>
           <span class="grow"></span>
+          <button id="serBtn" class="x5btn mono" onclick="series()">×5</button>
           <button id="sendBtn" onclick="send()"></button>
         </div>
         <div id="samePair" class="warnline" role="alert" hidden><span class="bang">!</span><span id="samePairText"></span></div>
@@ -593,7 +595,7 @@ const I18N = {
     vBothShort: 'Розійшлися і текст, і результати інструментів.',
     vUnknown: 'Результати інструментів звірити не вдалося; текст {t}.', vTextDiff: 'відрізняється', vTextSame: 'однаковий',
     vInputs: 'У вході відрізняється: {d}.', vPromptSame: 'Промпт однаковий, тож {d} — не в промпті: дивіться на інструменти і стан бази.',
-    runX5: 'Запустити ×5', doubt: 'Сумніваєтесь?', repeat5: 'Повторити 5 разів',
+    runX5: 'Запустити ×5', x5Cap: '5 разів на clean і 5 на {p}, кожен прогін — нова сесія: як часто що', x5CapSingle: '5 разів на цьому профілі, кожен прогін — нова сесія: власна похибка моделі', referenceSub: 'еталонні значення рушіїв банку', doubt: 'Сумніваєтесь?', repeat5: 'Повторити 5 разів',
     highlight: 'Підсвітити різницю', legendDel: 'лише ліворуч', legendAdd: 'лише праворуч',
     hlSkipped: 'підсвітка вимкнена: відповідь довша за {n} слів',
     whatDiffered: 'Що відрізнялося', diffChecking: 'порівнюю результати інструментів…',
@@ -706,7 +708,7 @@ const I18N = {
     vBothShort: 'Both the text and the tool results differ.',
     vUnknown: 'Couldn’t compare the tool results; the text {t}.', vTextDiff: 'differs', vTextSame: 'is the same',
     vInputs: 'Inputs differ in: {d}.', vPromptSame: 'The prompt is the same, so {d} is not in the prompt: look at the tools and database state.',
-    runX5: 'Run ×5', doubt: 'Not sure?', repeat5: 'Repeat 5 times',
+    runX5: 'Run ×5', x5Cap: '5 runs on clean and 5 on {p}, each a new session: how often', x5CapSingle: '5 runs on this profile, each a new session: the model’s own error', referenceSub: 'reference values from the bank engines', doubt: 'Not sure?', repeat5: 'Repeat 5 times',
     highlight: 'Highlight differences', legendDel: 'left only', legendAdd: 'right only',
     hlSkipped: 'highlighting off: the answer is longer than {n} words',
     whatDiffered: 'What differed', diffChecking: 'comparing tool results…',
@@ -1076,6 +1078,7 @@ function renderComposerHint(){
   $('sendBtn').textContent = t('askOnly', {p: arm});
   $('sendBtn').title = t('sendCap', {p: arm});
   $('cmpBtn').title = t('compareCap', {p: arm});
+  $('serBtn').title = same ? t('x5CapSingle') : t('x5Cap', {p: arm});
   $('pairRight').textContent = arm;
   $('samePairText').textContent = t('samePair', {p: arm});
   $('samePair').hidden = !same || activeCount < 0;
@@ -1751,7 +1754,7 @@ async function refreshState(){
 
   $('profileName').textContent = d.profile;
   $('profileDesc').textContent = profileDesc(d.profile);
-  $('whatDiffers').hidden = d.profile === 'clean';
+  $('whatDiffers').hidden = activeCount === 0;
   renderProfileList();
   $('lectItem').hidden = !standLocked;
   $('lectBadge').hidden = !isAdmin;
@@ -1984,8 +1987,8 @@ async function showPrompt(mode){
   const ticket = ++promptRequest;
   if(!mode){ $('overview').hidden = true; $('overview').classList.remove('full'); return; }
   $('overview').hidden = false;
-  $('ovTitle').textContent = t('ovTitle', {p: currentProfile, c: 'clean'});
-  $('pmProfile').textContent = t('tabProfile', {p: currentProfile});
+  $('ovTitle').textContent = t('ovTitle', {p: armName(), c: 'clean'});
+  $('pmProfile').textContent = t('tabProfile', {p: armName()});
   $('pmClean').textContent = t('tabClean');
   $('dmChanges').setAttribute('aria-pressed', String(!diffAll));
   $('dmAll').setAttribute('aria-pressed', String(diffAll));
@@ -2018,10 +2021,10 @@ async function showPrompt(mode){
 function renderOverviewSide(added, removed){
   const side = $('ovSide');
   side.textContent = '';
-  if(currentProfile === 'clean'){ side.appendChild(el('p', {cls: 'note', text: t('ovClean')})); return; }
+  if(activeCount === 0){ side.appendChild(el('p', {cls: 'note', text: t('ovClean')})); return; }
   side.appendChild(el('div', {cls: 'sec'}, [el('span', {cls: 'k', text: t('ovLines')}),
     el('div', {cls: 'counts'}, [el('span', {cls: 'a', text: '+' + added}), el('span', {cls: 'd', text: '−' + removed})])]));
-  const ids = Array.from(profileDefects).sort();
+  const ids = Array.from(new Set(Array.from(profileDefects).concat(Array.from(extraDefects)))).sort();
   const layers = {};
   ids.forEach(function(id){ const l = (defectDetails[id] || {}).layer; if(l) layers[l] = (layers[l] || 0) + 1; });
   const names = t('layerNames') || {};
@@ -2171,7 +2174,7 @@ function openAdvanced(){
 }
 function closeAdvanced(){ $('advPanel').hidden = true; }
 
-let openPop = null;
+let openPop = null, popJustOpened = false;
 function togglePop(id, btn, forceOpen){
   const pop = $(id);
   const willOpen = forceOpen || pop.hidden;
@@ -2180,6 +2183,8 @@ function togglePop(id, btn, forceOpen){
   pop.hidden = false;
   if(btn) btn.setAttribute('aria-expanded', 'true');
   openPop = {pop: pop, btn: btn};
+  popJustOpened = true;
+  setTimeout(function(){ popJustOpened = false; }, 0);
 }
 function closePops(){
   ['profileList', 'menu', 'lectPop', 'custPop'].forEach(function(id){ $(id).hidden = true; });
@@ -2187,7 +2192,7 @@ function closePops(){
   openPop = null;
 }
 document.addEventListener('click', function(e){
-  if(!openPop) return;
+  if(!openPop || popJustOpened) return;
   if(openPop.pop.contains(e.target) || (openPop.btn && openPop.btn.contains(e.target))) return;
   closePops();
 });
