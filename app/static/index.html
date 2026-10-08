@@ -236,35 +236,64 @@
            font:var(--fs-xs)/1.6 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;max-height:320px;overflow:auto}
   .raw pre.l{border:1px solid var(--left-line)} .raw pre.r{border:1px solid var(--right-line)}
 
-  .x5-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);border-top:1px solid var(--line)}
-  .x5-cols.one{grid-template-columns:minmax(0,1fr)}
-  .x5-same{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-  .x5-same b{font:600 var(--fs-lg) var(--mono)}
-  .letters{display:flex;gap:6px}
-  .letters .ln{display:flex;flex-direction:column;align-items:center;gap:2px;font:var(--fs-xs) var(--mono);color:var(--muted)}
-  .lt{width:24px;height:24px;border-radius:5px;display:inline-grid;place-items:center;flex:none;font:600 var(--fs-xs) var(--mono);
-      color:var(--text);background:var(--surface-2);border:1px solid var(--line-strong)}
-  .lt.alt{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-line)}
-  .run-h .lt{width:22px;height:22px}
-  .x5-sec{display:flex;flex-direction:column;gap:6px}
-  .groups{display:flex;flex-direction:column;gap:4px}
-  .groups .g{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:var(--fs-sm)}
-  .groups .g .v{font:600 var(--fs-sm) var(--mono)}
-  .groups .g .c{color:var(--muted)} .groups .g.alt .c{color:var(--warn)}
-  .bars{display:grid;grid-template-columns:auto minmax(60px,1fr) auto;gap:6px var(--s3);align-items:center;font:var(--fs-sm) var(--mono)}
-  .bars .k{color:var(--muted)} .bars .part{color:var(--warn)}
-  .bar{height:6px;border-radius:3px;background:var(--line)}
-  .bar i{display:block;height:100%;border-radius:3px;background:var(--muted)}
-  .l .bar i{background:var(--left)} .r .bar i{background:var(--right)}
-  .bar.part i{background:var(--warn)}
-  .runs{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+  .x5t{display:grid;grid-template-columns:minmax(0,1fr) repeat(var(--arms),164px);border-top:1px solid var(--line)}
+  .x5t .tr{display:contents}
+  .x5t .th{padding:8px var(--s4);background:var(--surface-2);display:flex;align-items:center;gap:8px;min-width:0}
+  .x5t .th.ans,.x5t .cap-row{font:600 var(--fs-xs) var(--sans);color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  .x5t .th.arm{border-left:1px solid var(--line)}
+  .x5t .th.arm b{font:600 var(--fs-sm) var(--mono)}
+  .x5t .th.l{box-shadow:inset 0 3px 0 var(--left)} .x5t .th.l b{color:var(--left)}
+  .x5t .th.r{box-shadow:inset 0 3px 0 var(--right)} .x5t .th.r b{color:var(--right)}
+  .x5t .base{font-size:var(--fs-xs);color:var(--muted);border:1px solid var(--line-strong);border-radius:99px;padding:0 8px}
+  .x5t .ans-c{padding:var(--s3) var(--s4);border-top:1px solid var(--line);display:flex;flex-direction:column;gap:var(--s2);min-width:0}
+  .x5t .what{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
+  .x5t .what .o{font-weight:600}
+  .x5 .dot{width:10px;height:10px;border-radius:50%;flex:none;background:var(--muted)}
+  .x5 .dot.ok{background:var(--ok)} .x5 .dot.warn{background:var(--warn)}
+  .x5t .chip{font:var(--fs-sm) var(--mono);background:var(--surface-2);border-radius:4px;padding:1px 8px}
+  .x5t .chip .k{color:var(--muted)}
+  .x5t .chip.warn{background:var(--warn-bg);color:var(--warn)} .x5t .chip.warn .k{color:inherit}
+  .x5t .ref{font-size:var(--fs-xs);color:var(--muted)} .x5t .ref.ok{color:var(--ok)} .x5t .ref.warn{color:var(--warn)}
+  .x5t .none{font-size:var(--fs-sm);color:var(--muted);font-style:italic}
+  .x5t .quote{background:var(--bg);border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 12px;display:flex;flex-direction:column;gap:2px}
+  .x5t .quote .src{font-size:var(--fs-xs);color:var(--muted)}
+  .x5t .quote .txt{font-size:var(--fs-sm);line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+  .x5t .cnt{padding:var(--s3) var(--s4);border-top:1px solid var(--line);border-left:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+  .x5t .cnt.warn{background:var(--warn-bg)}
+  .x5t .num{display:flex;align-items:baseline;gap:6px;font-size:var(--fs-sm);color:var(--muted)}
+  .x5t .num b{font:600 var(--fs-xl)/1 var(--mono);color:var(--text)}
+  .x5t .cnt.zero .num b{color:var(--muted)} .x5t .cnt.warn .num,.x5t .cnt.warn .num b{color:var(--warn)}
+  .sq{display:flex;gap:4px}
+  .sq span{box-sizing:border-box;width:20px;height:20px;border-radius:4px;display:grid;place-items:center;
+           font:11px var(--mono);border:1px solid var(--line);color:var(--line-strong)}
+  .sq span.on{font-weight:600;border:none;color:var(--surface);background:var(--muted)}
+  .sq.ok span.on{background:var(--ok)} .sq.warn span.on{background:var(--warn)}
+  .sq.warn span:not(.on){border-color:var(--warn-line);color:var(--warn-line)}
+  .sq.mini{gap:3px} .sq.mini span{width:8px;height:8px;border-radius:2px;border-color:var(--line-strong)}
+  .x5t .cap-row{grid-column:1/-1;padding:8px var(--s4);border-top:1px solid var(--line);background:var(--surface-2)}
+  .x5t .rows-note{grid-column:1/-1;padding:8px var(--s4);border-top:1px solid var(--line);font-size:var(--fs-xs);color:var(--muted);line-height:1.5}
+  .x5t .tool-n{padding:8px var(--s4);border-top:1px solid var(--line);font:var(--fs-sm) var(--mono);min-width:0;overflow-wrap:anywhere}
+  .x5t .tool-c{padding:8px var(--s4);border-top:1px solid var(--line);border-left:1px solid var(--line);display:flex;align-items:center;gap:8px;font:var(--fs-sm) var(--mono)}
+  .x5t .tool-c b{min-width:42px} .x5t .tool-c.zero{color:var(--muted)}
+  .x5-each{border-top:1px solid var(--line)}
+  .x5-each .hint{font-size:var(--fs-xs);color:var(--muted);padding:var(--s2) var(--s4) 0}
+  .x5-each .cols{display:grid;grid-template-columns:repeat(var(--arms),minmax(0,1fr))}
+  .x5-each .col{display:flex;flex-direction:column;min-width:0}
+  .x5-each .col+.col{border-left:1px solid var(--line)}
+  .x5-each .col-h{padding:8px var(--s4);display:flex;align-items:center;gap:8px;font:600 var(--fs-sm) var(--mono)}
+  .x5-each .col-h.l{color:var(--left)} .x5-each .col-h.r{color:var(--right)}
   .run{border-top:1px solid var(--line)}
-  .run-h.run-cols{border-top:none;font:600 var(--fs-xs) var(--sans);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;cursor:default}
-  .run-h{display:grid;grid-template-columns:36px 22px minmax(0,1fr) auto 14px;gap:var(--s2);align-items:center;width:100%;
-         background:none;border:none;border-radius:0;padding:6px 10px;font:var(--fs-xs) var(--mono);text-align:left}
-  .run-h .tools{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .run-h .tools b{color:var(--warn)}
-  .run-a{padding:6px 10px 10px;font-size:var(--fs-sm);white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg)}
+  .run-h{display:grid;grid-template-columns:28px 10px minmax(0,1fr) 14px;gap:var(--s2);align-items:center;width:100%;
+         background:none;border:none;border-radius:0;padding:8px var(--s4);font:var(--fs-sm) var(--sans);text-align:left;color:var(--text)}
+  .run-h .no{font:var(--fs-xs) var(--mono);color:var(--muted)}
+  .run-h .pv{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+  .run-h .caret{color:var(--muted)}
+  .run-a{padding:0 var(--s4) var(--s3) calc(var(--s4) + 46px);display:flex;flex-direction:column;gap:6px}
+  .run-a .txt{font-size:var(--fs-sm);line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+  .run-a .tb{font:var(--fs-xs) var(--mono);color:var(--muted);overflow-wrap:anywhere}
+  .run-a .meta-l{display:flex;gap:6px;flex-wrap:wrap;font-size:var(--fs-xs);color:var(--muted)}
+  .x5-each .why{padding:var(--s2) var(--s4) var(--s3);font-size:var(--fs-xs);color:var(--muted);border-top:1px solid var(--line)}
+  .x5-meta{padding:var(--s2) var(--s4);font:var(--fs-xs) var(--mono);color:var(--muted);border-top:1px solid var(--line)}
   .note{font-size:var(--fs-xs);color:var(--muted)}
 
   .drawer{width:420px;flex:none;border-left:1px solid var(--line-strong);background:var(--surface);display:flex;flex-direction:column;min-height:0}
@@ -345,7 +374,11 @@
     .msgs{padding:14px}
     .composer-in{padding:10px 14px 14px}
     .actrow #cmpBtn{flex:1}
-    .cmp-cols,.x5-cols,.raw{grid-template-columns:minmax(0,1fr)}
+    .cmp-cols,.raw,.x5-each .cols{grid-template-columns:minmax(0,1fr)}
+    .x5-each .col+.col{border-left:none;border-top:1px solid var(--line)}
+    .x5t{grid-template-columns:repeat(var(--arms),minmax(0,1fr))}
+    .x5t .th.ans,.x5t .ans-c,.x5t .tool-n{grid-column:1/-1}
+    .x5t .th.arm:nth-child(2),.x5t .cnt:nth-child(2),.x5t .tool-c:nth-child(2){border-left:none}
     .side-col+.side-col{border-left:none;border-top-width:3px}
     .dgrid{grid-template-columns:minmax(0,1fr) auto auto auto}
     .dgrid .refnote{grid-column:1/-1}
@@ -619,13 +652,20 @@ const I18N = {
     cProfile: 'профіль', cDefects: 'дефекти', cPrompt: 'промпт', cSession: 'сесія', cClock: 'час стенду', cIndex: 'індекс пошуку', cModel: 'модель', cRouter: 'маршрутизатор', cRouterNone: 'немає',
     newNoHistory: 'нова, без історії чату', eq: '= однаково', neq: '≠ різниться', comparing: 'порівнюю…',
     x5Title: 'те саме питання {n} разів · кожен прогін — нова сесія', x5Running: 'ганяю {n} разів… це до {m} викликів моделі, зачекайте',
-    x5Same: '{k} з {n}', x5SameSub: 'прогонів дали ту саму відповідь', x5Variants: 'Варіанти відповіді', x5InAll: '— в усіх {n} прогонах',
-    x5InOne: '— в 1 прогоні', x5InK: '— у {k} прогонах', x5Other: ', інші числа', x5OtherAnswer: ', інша відповідь',
-    x5ToolsH: 'Виклики інструментів · з {n} прогонів', x5RunsAria: 'прогони 1–{n}: {l}', x5ColNo: '№', x5ColTools: 'інструменти', x5ColTrace: 'трейс', x5FreqDiff: 'частоти різні', x5FreqSame: 'частоти однакові',
-    x5VerdictDiff: 'Розподіл відповідей або викликів інструментів різниться: {d}.', x5VerdictSame: 'Обидві сторони поводяться однаково в усіх {n} прогонах.',
+    x5Same: '{k} з {n}', x5Of: 'з {n}', x5Never: 'жодного разу', x5RunsAria: 'прогони: {l}', x5FreqDiff: 'частоти різні', x5FreqSame: 'частоти однакові',
+    x5ColAnswer: 'Що відповів агент', x5Baseline: 'еталон', x5ToolsH: 'Які інструменти викликав',
+    x5OutFx: 'Порахував обмін', x5OutLimits: 'Перевірив ліміти', x5OutAsked: 'Перепитав', x5OutEscalated: 'Передав людині', x5OutError: 'Помилка', x5OutAnswered: 'Відповів',
+    x5KindReceives: 'отримає ', x5KindSpread: 'spread ', x5KindDailyLeft: 'лишилось на день ', x5KindMonthlyLeft: 'лишилось на місяць ', x5NoNumbers: 'суми не назвав',
+    x5RefOk: '✓ як у довіднику для {tier}', x5RefBad: 'у довіднику для {tier}: {v}',
+    x5Sample: 'Відповідь агента · {p}, прогін #{i}', x5SampleDiff: ' · жовтим — інакше, ніж у рядку вище',
+    x5RowsNote: 'Рядок — відповідь, інша за змістом: що зробив агент і які числа назвав. Числа з питання, id клієнтів і рахунків та формат запису (6,000 чи 6,000.00) нового рядка не створюють. Квадратики — прогони 1–{n}.',
+    x5EachRun: 'Кожен прогін окремо', x5EachRunSub: '{n} відповідей, інструменти, трейси', x5EachRunHint: 'крапка — до якого рядка вище належить відповідь',
+    x5EachRunWhy: 'Формулювання різні, а зміст однаковий — тому такі прогони стоять в одному рядку.',
+    x5VerdictNew: '{p} у {k} з {n} прогонів: {a}. У {b} такої відповіді не було жодного разу.', x5Stable: ' Різниця стабільна, а не випадкова.',
+    x5Maybe: ' Це може бути випадковість — запустіть ×5 ще раз.', x5VerdictShift: '«{a}»: {p} — {k} з {n}, {b} — {j} з {n}.',
+    x5VerdictSame: 'Обидва профілі дали ті самі відповіді з тими самими частотами в усіх {n} прогонах.',
     x5Single: 'Профіль clean без дефектів — {n} прогонів лише на ньому: так видно власну похибку моделі.',
-    x5Groups: 'групи {l}: {r}', x5Tools: '{t}: {a} → {b}',
-    x5Note: 'Доказ — це різниця частот, а не одна пара відповідей. Прогін, де агент перепитав, теж рахується: так виглядає похибка еталона.',
+    x5Tools: '{t}: {a} → {b}',
     tokensTime: 'Токени й час', noToolsCalled: 'жодного інструмента не викликано', emptyRun: '(порожньо)',
     refTitle: 'Як має бути', refBadge: 'еталон для clean',
     refSrc: 'Значення з рушіїв банку (app/engines/policy.py). На профілях занять агент може відповідати інакше — це й шукаємо.',
@@ -734,13 +774,20 @@ const I18N = {
     cProfile: 'profile', cDefects: 'defects', cPrompt: 'prompt', cSession: 'session', cClock: 'stand clock', cIndex: 'search index', cModel: 'model', cRouter: 'router', cRouterNone: 'none',
     newNoHistory: 'new, no chat history', eq: '= same', neq: '≠ differs', comparing: 'comparing…',
     x5Title: 'the same question {n} times · every run is a new session', x5Running: 'running {n} times… up to {m} model calls, please wait',
-    x5Same: '{k} of {n}', x5SameSub: 'runs gave the same answer', x5Variants: 'Answer variants', x5InAll: '— in all {n} runs',
-    x5InOne: '— in 1 run', x5InK: '— in {k} runs', x5Other: ', different numbers', x5OtherAnswer: ', different answer',
-    x5ToolsH: 'Tool calls · out of {n} runs', x5RunsAria: 'runs 1–{n}: {l}', x5ColNo: '#', x5ColTools: 'tools', x5ColTrace: 'trace', x5FreqDiff: 'frequencies differ', x5FreqSame: 'frequencies match',
-    x5VerdictDiff: 'The distribution of answers or tool calls differs: {d}.', x5VerdictSame: 'Both sides behave the same in all {n} runs.',
+    x5Same: '{k} of {n}', x5Of: 'of {n}', x5Never: 'never', x5RunsAria: 'runs: {l}', x5FreqDiff: 'frequencies differ', x5FreqSame: 'frequencies match',
+    x5ColAnswer: 'What the agent answered', x5Baseline: 'baseline', x5ToolsH: 'Which tools it called',
+    x5OutFx: 'Quoted the exchange', x5OutLimits: 'Checked the limits', x5OutAsked: 'Asked back', x5OutEscalated: 'Handed to a human', x5OutError: 'Error', x5OutAnswered: 'Answered',
+    x5KindReceives: 'gets ', x5KindSpread: 'spread ', x5KindDailyLeft: 'left today ', x5KindMonthlyLeft: 'left this month ', x5NoNumbers: 'named no amount',
+    x5RefOk: '✓ matches the reference for {tier}', x5RefBad: 'reference for {tier}: {v}',
+    x5Sample: 'Agent’s reply · {p}, run #{i}', x5SampleDiff: ' · yellow — differs from the row above',
+    x5RowsNote: 'A row is an answer that differs in substance: what the agent did and which numbers it gave. Numbers from the question, customer and account ids and number format (6,000 or 6,000.00) do not make a new row. Squares are runs 1–{n}.',
+    x5EachRun: 'Each run separately', x5EachRunSub: '{n} replies, tools, traces', x5EachRunHint: 'the dot shows which row above the reply belongs to',
+    x5EachRunWhy: 'The wording differs but the substance is the same — so these runs share one row.',
+    x5VerdictNew: '{p} in {k} of {n} runs: {a}. {b} never gave this answer.', x5Stable: ' The difference is stable, not random.',
+    x5Maybe: ' This may be chance — run ×5 again.', x5VerdictShift: '“{a}”: {p} — {k} of {n}, {b} — {j} of {n}.',
+    x5VerdictSame: 'Both profiles gave the same answers at the same frequencies in all {n} runs.',
     x5Single: 'clean with no defects — {n} runs on it alone: this shows the model’s own error.',
-    x5Groups: 'groups {l}: {r}', x5Tools: '{t}: {a} → {b}',
-    x5Note: 'Evidence is a difference in frequencies, not one pair of answers. A run where the agent asked back counts too: that is the baseline’s error.',
+    x5Tools: '{t}: {a} → {b}',
     tokensTime: 'Tokens and time', noToolsCalled: 'no tools called', emptyRun: '(empty)',
     refTitle: 'What’s correct', refBadge: 'baseline for clean',
     refSrc: 'Values from the bank engines (app/engines/policy.py). Lesson profiles may answer differently — that’s what you look for.',
@@ -1233,100 +1280,162 @@ function toolSummary(arm){
   return parts.length ? parts.join(' · ') : t('noToolsCalled');
 }
 
-function answerSignature(run){
-  const nums = (run.answer || '').match(/\d[\d,.  ]*\d|\d/g) || [];
-  const clean = nums.map(function(s){ return s.replace(/[,  ]/g, '').replace(/\.$/, ''); });
-  const sig = clean.filter(function(v, i){ return clean.indexOf(v) === i; });
-  const shown = sig.slice(0, 2).map(function(v){ return nums[clean.indexOf(v)].trim(); });
-  return {key: sig.length ? sig.join('|') : 'tools:' + run.tools_called.join(','), label: shown.join(' · ')};
+const OUTCOME_KEYS = {fx: 'x5OutFx', limits: 'x5OutLimits', asked: 'x5OutAsked', escalated: 'x5OutEscalated', error: 'x5OutError', answered: 'x5OutAnswered'};
+const KIND_KEYS = {receives: 'x5KindReceives', spread: 'x5KindSpread', dailyLeft: 'x5KindDailyLeft', monthlyLeft: 'x5KindMonthlyLeft'};
+
+function fmtValue(v){
+  const pct = v.unit === '%';
+  const n = Number(v.value).toLocaleString('en-US', {minimumFractionDigits: pct ? 0 : 2, maximumFractionDigits: 2});
+  return pct ? n + '%' : n + ' ' + v.unit;
 }
 
-function letterFor(registry, key){
-  if(!(key in registry)) registry[key] = String.fromCharCode(65 + Object.keys(registry).length);
-  return registry[key];
+function rowText(row){
+  const vals = row.values.map(function(v){ return (KIND_KEYS[v.kind] ? t(KIND_KEYS[v.kind]) : '') + fmtValue(v); });
+  return [t(OUTCOME_KEYS[row.outcome] || 'x5OutAnswered')].concat(vals).join(' · ');
 }
 
-function renderSeriesArm(holder, label, arm, side, registry){
-  const col = el('div', {cls: 'side-col ' + side});
-  col.appendChild(el('div', {cls: 'side-h'}, [el('span', {cls: 'dot'}), el('span', {cls: 'nm', text: arm.profile}),
-    arm.active_defects.length ? el('span', {cls: 'muted mono', text: arm.active_defects.join(',')}) : null]));
-  const letters = arm.runs.map(function(r){ return letterFor(registry, answerSignature(r).key); });
-  const groups = {};
-  letters.forEach(function(l, i){ (groups[l] = groups[l] || {n: 0, label: answerSignature(arm.runs[i]).label}).n += 1; });
-  const top = Math.max.apply(null, Object.keys(groups).map(function(k){ return groups[k].n; }));
-  const major = Object.keys(groups).filter(function(k){ return groups[k].n === top; })[0];
-  const n = arm.runs.length;
-  col.appendChild(el('div', {cls: 'x5-same'}, [el('b', {text: t('x5Same', {k: top, n: n})}), el('span', {cls: 'note', text: t('x5SameSub')})]));
-  col.appendChild(el('div', {cls: 'letters', 'aria-label': t('x5RunsAria', {n: n, l: letters.join(' ')})}, letters.map(function(l, i){
-    return el('div', {cls: 'ln'}, [el('span', {cls: 'lt' + (l === major ? '' : ' alt'), text: l}), el('span', {text: String(i + 1)})]); })));
-  col.appendChild(el('div', {cls: 'x5-sec'}, [el('div', {cls: 'sub-h', text: t('x5Variants')}),
-    el('div', {cls: 'groups'}, Object.keys(groups).sort().map(function(l){
-      const g = groups[l], alt = l !== major;
-      const count = g.n === n ? t('x5InAll', {n: n}) : g.n === 1 ? t('x5InOne') : t('x5InK', {k: g.n});
-      return el('div', {cls: 'g' + (alt ? ' alt' : '')}, [el('span', {cls: 'lt' + (alt ? ' alt' : ''), text: l}),
-        el('span', {cls: 'v', text: g.label || '—'}),
-        el('span', {cls: 'c', text: count + (alt ? (g.label ? t('x5Other') : t('x5OtherAnswer')) : '')})]); }))]));
-  const bars = el('div', {cls: 'bars'});
-  const names = Object.keys(arm.tool_counts).sort();
-  const partial = names.filter(function(name){ return arm.tool_counts[name] < n; });
-  if(!names.length) bars.appendChild(el('span', {cls: 'note', text: toolSummary(arm), style: 'grid-column:1/-1'}));
-  names.forEach(function(name){
-    const k = arm.tool_counts[name], part = k < n;
-    bars.appendChild(el('span', {cls: part ? 'part' : '', text: name}));
-    bars.appendChild(el('span', {cls: 'bar' + (part ? ' part' : '')}, [el('i', {style: 'width:' + Math.round(100 * k / n) + '%'})]));
-    bars.appendChild(el('span', {cls: part ? 'part' : 'k', text: t('x5Same', {k: k, n: n})}));
-  });
-  col.appendChild(el('div', {cls: 'x5-sec'}, [el('div', {cls: 'sub-h', text: t('x5ToolsH', {n: n})}), bars]));
-  const runs = el('div', {cls: 'runs'});
-  runs.appendChild(el('div', {cls: 'run-h run-cols', 'aria-hidden': 'true'}, [el('span', {text: t('x5ColNo')}), el('span'),
-    el('span', {text: t('x5ColTools')}), el('span', {text: t('x5ColTrace')}), el('span')]));
-  arm.runs.forEach(function(run, i){
-    const body = el('div', {cls: 'run-a', hidden: true});
-    renderRich(run.answer || t('emptyRun'), body);
-    const caret = el('span', {cls: 'caret', text: '▸'});
-    const tools = el('span', {cls: 'tools'});
-    if(!run.tools_called.length) tools.textContent = '—';
-    run.tools_called.forEach(function(name, j){
-      if(j) tools.appendChild(document.createTextNode(', '));
-      tools.appendChild(partial.indexOf(name) >= 0 ? el('b', {text: name}) : document.createTextNode(name));
+function rowTone(row, armKeys){
+  if(row.reference) return row.reference.ok ? 'ok' : 'warn';
+  if(armKeys.length > 1 && row.arms[armKeys[0]].count === 0) return 'warn';
+  return '';
+}
+
+function changedKinds(rows, idx){
+  const row = rows[idx];
+  const prev = rows.slice(0, idx).filter(function(r){ return r.outcome === row.outcome; })[0];
+  if(!prev) return [];
+  return row.values.filter(function(v){
+    return prev.values.some(function(p){ return p.kind === v.kind && (p.value !== v.value || p.unit !== v.unit); });
+  }).map(function(v){ return v.kind; });
+}
+
+function squares(runs, n, tone, mini){
+  const on = runs.map(Number);
+  const items = [];
+  for(let i = 1; i <= n; i++) items.push(el('span', {cls: on.indexOf(i) >= 0 ? 'on' : '', text: mini ? '' : String(i)}));
+  return el('span', {cls: 'sq' + (tone ? ' ' + tone : '') + (mini ? ' mini' : ''), 'aria-label': t('x5RunsAria', {l: on.join(', ')})}, items);
+}
+
+function renderSeriesTable(rows, arms, armKeys, n){
+  const sides = armKeys.length > 1 ? ['l', 'r'] : ['l'];
+  const table = el('div', {cls: 'x5t', role: 'table', style: '--arms:' + armKeys.length});
+  table.appendChild(el('div', {cls: 'tr', role: 'row'}, [el('span', {cls: 'th ans', role: 'columnheader', text: t('x5ColAnswer')})].concat(
+    armKeys.map(function(a, k){
+      return el('span', {cls: 'th arm ' + sides[k], role: 'columnheader'}, [el('b', {text: armLabel(arms[a])}),
+        armKeys.length > 1 && k === 0 ? el('span', {cls: 'base', text: t('x5Baseline')}) : null]);
+    }))));
+  rows.forEach(function(row, idx){
+    const tone = rowTone(row, armKeys);
+    const changed = changedKinds(rows, idx);
+    const what = el('div', {cls: 'what'}, [el('span', {cls: 'dot' + (tone ? ' ' + tone : '')}),
+      el('span', {cls: 'o', text: t(OUTCOME_KEYS[row.outcome] || 'x5OutAnswered')})]);
+    row.values.forEach(function(v){
+      what.appendChild(el('span', {cls: 'chip' + (changed.indexOf(v.kind) >= 0 ? ' warn' : '')},
+        [KIND_KEYS[v.kind] ? el('span', {cls: 'k', text: t(KIND_KEYS[v.kind])}) : null, fmtValue(v)]));
     });
-    const head = el('button', {cls: 'run-h', 'aria-expanded': 'false'}, [
-      el('span', {cls: 'muted', text: '#' + (i + 1)}), el('span', {cls: 'lt' + (letters[i] === major ? '' : ' alt'), text: letters[i]}),
-      tools,
-      el('a', {text: run.request_id.slice(0, 8), onclick: function(ev){ ev.stopPropagation(); openTrace(run.request_id); }}), caret]);
-    head.onclick = function(){
-      body.hidden = !body.hidden;
-      head.setAttribute('aria-expanded', String(!body.hidden));
-      caret.textContent = body.hidden ? '▸' : '▾';
-    };
-    runs.appendChild(el('div', {cls: 'run'}, [head, body]));
+    if(!row.values.length) what.appendChild(el('span', {cls: 'none', text: t('x5NoNumbers')}));
+    if(row.reference){
+      what.appendChild(el('span', {cls: 'ref ' + (row.reference.ok ? 'ok' : 'warn'), text: row.reference.ok
+        ? t('x5RefOk', {tier: row.reference.tier})
+        : t('x5RefBad', {tier: row.reference.tier, v: row.reference.spread_pct + '%'})}));
+    }
+    const txt = el('span', {cls: 'txt'});
+    renderRich(row.sample.answer || t('emptyRun'), txt);
+    const quote = el('div', {cls: 'quote'}, [
+      el('span', {cls: 'src', text: t('x5Sample', {p: armLabel(arms[row.sample.arm]), i: row.sample.run}) + (changed.length ? t('x5SampleDiff') : '')}), txt]);
+    const cells = [el('div', {cls: 'ans-c', role: 'cell'}, [what, quote])];
+    armKeys.forEach(function(a){
+      const c = row.arms[a];
+      const hot = tone === 'warn' && c.count > 0;
+      cells.push(el('div', {cls: 'cnt' + (c.count ? '' : ' zero') + (hot ? ' warn' : ''), role: 'cell'}, [
+        el('span', {cls: 'num'}, [el('b', {text: String(c.count)}), c.count ? t('x5Of', {n: n}) : t('x5Never')]),
+        c.count ? squares(c.runs, n, tone) : null]));
+    });
+    table.appendChild(el('div', {cls: 'tr', role: 'row'}, cells));
   });
-  col.appendChild(runs);
-  const m = el('div', {cls: 'meta', hidden: true});
-  m.textContent = 'in ' + arm.usage.input_tokens + ' / out ' + arm.usage.output_tokens +
-    ' tok' + costPart(arm.usage.cost_usd) + ' · ' + (Math.round(arm.elapsed_ms) / 1000).toFixed(1) +
-    ' ' + t('sec') + ' · ' + t('promptV') + ' ' + arm.prompt_version;
-  col.appendChild(m);
-  addSpend(arm.usage.cost_usd);
-  holder.appendChild(col);
-  return {letters: letters, meta: m};
+  table.appendChild(el('span', {cls: 'rows-note', text: t('x5RowsNote', {n: n})}));
+  table.appendChild(el('span', {cls: 'cap-row', text: t('x5ToolsH')}));
+  const names = {};
+  armKeys.forEach(function(a){ Object.keys(arms[a].tool_counts).forEach(function(name){ names[name] = true; }); });
+  const toolNames = Object.keys(names).sort();
+  if(!toolNames.length) table.appendChild(el('span', {cls: 'rows-note', text: t('noToolsCalled')}));
+  toolNames.forEach(function(name){
+    const cells = [el('span', {cls: 'tool-n', role: 'cell', text: name})];
+    armKeys.forEach(function(a){
+      const k = arms[a].tool_counts[name] || 0;
+      const runs = [];
+      arms[a].runs.forEach(function(r, i){ if(r.tools_called.indexOf(name) >= 0) runs.push(i + 1); });
+      cells.push(el('span', {cls: 'tool-c' + (k ? '' : ' zero'), role: 'cell'}, [k ? el('b', {text: t('x5Same', {k: k, n: n})}) : t('x5Same', {k: 0, n: n}),
+        k ? squares(runs, n, '', true) : null]));
+    });
+    table.appendChild(el('div', {cls: 'tr', role: 'row'}, cells));
+  });
+  return table;
 }
 
-function seriesVerdict(left, right, ls, rs){
-  if(!right) return {state: 'same', text: t('x5Single', {n: left.runs.length})};
-  const dist = function(ls2){ const c = {}; ls2.forEach(function(l){ c[l] = (c[l] || 0) + 1; }); return c; };
-  const a = dist(ls), b = dist(rs), parts = [];
-  const keys = Object.keys(Object.assign({}, a, b)).sort();
-  if(keys.some(function(k){ return (a[k] || 0) !== (b[k] || 0); })){
-    parts.push(t('x5Groups', {l: keys.join('/'), r: keys.map(function(k){ return (a[k] || 0) + '→' + (b[k] || 0); }).join(', ')}));
-  }
-  const tools = Object.keys(Object.assign({}, left.tool_counts, right.tool_counts)).sort();
-  tools.forEach(function(name){
-    const x = left.tool_counts[name] || 0, y = right.tool_counts[name] || 0;
-    if(x !== y) parts.push(t('x5Tools', {t: name, a: x + '/' + left.runs.length, b: y + '/' + right.runs.length}));
+function renderEachRun(rows, arms, armKeys){
+  const sides = armKeys.length > 1 ? ['l', 'r'] : ['l'];
+  const toneOf = {};
+  rows.forEach(function(row){ toneOf[row.key] = rowTone(row, armKeys); });
+  const wrap = el('section', {cls: 'x5-each', 'aria-label': t('x5EachRun'), hidden: true});
+  wrap.appendChild(el('div', {cls: 'hint', text: t('x5EachRunHint')}));
+  const cols = el('div', {cls: 'cols', style: '--arms:' + armKeys.length});
+  armKeys.forEach(function(a, k){
+    const col = el('div', {cls: 'col'}, [el('div', {cls: 'col-h ' + sides[k]}, [armLabel(arms[a]),
+      armKeys.length > 1 && k === 0 ? el('span', {cls: 'note', text: t('x5Baseline')}) : null])]);
+    arms[a].runs.forEach(function(run, i){
+      const tone = toneOf[run.facts.key] || '';
+      const txt = el('div', {cls: 'txt'});
+      renderRich(run.answer || t('emptyRun'), txt);
+      const body = el('div', {cls: 'run-a', hidden: true}, [txt]);
+      (run.tool_brief || []).forEach(function(line){ body.appendChild(el('span', {cls: 'tb', text: line})); });
+      body.appendChild(el('span', {cls: 'meta-l'}, [
+        el('a', {href: '#', text: t('evTrace') + ' ' + run.request_id.slice(0, 8), onclick: function(ev){ ev.preventDefault(); openTrace(run.request_id); }}),
+        run.elapsed_ms != null ? '· ' + (run.elapsed_ms / 1000).toFixed(1) + ' ' + t('sec') : null,
+        run.usage && run.usage.cost_usd != null ? '· ≈ ' + fmtUsd(run.usage.cost_usd) : null]));
+      const caret = el('span', {cls: 'caret', text: '▸'});
+      const head = el('button', {cls: 'run-h', 'aria-expanded': 'false'}, [el('span', {cls: 'no', text: '#' + (i + 1)}),
+        el('span', {cls: 'dot' + (tone ? ' ' + tone : ''), title: rowText({outcome: run.facts.outcome, values: run.facts.values})}),
+        el('span', {cls: 'pv', text: (run.answer || t('emptyRun')).replace(/\*\*|`/g, '').replace(/\s+/g, ' ')}), caret]);
+      head.onclick = function(){
+        body.hidden = !body.hidden;
+        head.setAttribute('aria-expanded', String(!body.hidden));
+        caret.textContent = body.hidden ? '▸' : '▾';
+      };
+      col.appendChild(el('div', {cls: 'run'}, [head, body]));
+    });
+    cols.appendChild(col);
   });
-  return parts.length ? {state: 'diff', text: t('x5VerdictDiff', {d: parts.join('; ')})}
-                      : {state: 'same', text: t('x5VerdictSame', {n: left.runs.length})};
+  wrap.appendChild(cols);
+  if(rows.some(function(r){ return armKeys.some(function(a){ return r.arms[a].count > 1; }); })){
+    wrap.appendChild(el('div', {cls: 'why', text: t('x5EachRunWhy')}));
+  }
+  return wrap;
+}
+
+function seriesVerdict(rows, arms, armKeys){
+  const n = arms[armKeys[0]].runs.length;
+  if(armKeys.length < 2) return {state: 'same', text: t('x5Single', {n: n})};
+  const base = armKeys[0], cur = armKeys[1];
+  const pb = armLabel(arms[base]), pc = armLabel(arms[cur]);
+  const parts = [];
+  const moved = rows.filter(function(r){ return r.arms[base].count !== r.arms[cur].count; });
+  if(moved.length){
+    const top = moved.slice().sort(function(x, y){
+      return (y.arms[cur].count - y.arms[base].count) - (x.arms[cur].count - x.arms[base].count);
+    })[0];
+    const k = top.arms[cur].count, j = top.arms[base].count;
+    if(j === 0 && k > 0) parts.push(t('x5VerdictNew', {p: pc, k: k, n: n, a: rowText(top), b: pb}) + (k >= n - 1 ? t('x5Stable') : t('x5Maybe')));
+    else parts.push(t('x5VerdictShift', {a: rowText(top), p: pc, k: k, n: n, b: pb, j: j}));
+  }
+  const tools = Object.keys(Object.assign({}, arms[base].tool_counts, arms[cur].tool_counts)).sort();
+  const toolParts = [];
+  tools.forEach(function(name){
+    const x = arms[base].tool_counts[name] || 0, y = arms[cur].tool_counts[name] || 0;
+    if(x !== y) toolParts.push(t('x5Tools', {t: name, a: x + '/' + n, b: y + '/' + n}));
+  });
+  if(toolParts.length) parts.push(toolParts.join('; ') + '.');
+  return parts.length ? {state: 'diff', text: parts.join(' ')} : {state: 'same', text: t('x5VerdictSame', {n: n})};
 }
 
 async function series(question){
@@ -1336,7 +1445,7 @@ async function series(question){
   const composed = typeof question === 'string' ? {message: raw, cust: ''} : composeMessage(raw);
   if(typeof question !== 'string'){ inp.value = ''; addUser(raw, composed.cust); }
   setBusy(true);
-  const holder = el('section', {cls: 'card msg'});
+  const holder = el('section', {cls: 'card msg x5'});
   const waitLine = el('div', {cls: 'card-head'}, [el('span', {cls: 'dots'}, [el('i'), el('i'), el('i')]),
     el('span', {cls: 'muted', text: t('x5Running', {n: SERIES_RUNS, m: SERIES_RUNS * 2})})]);
   holder.appendChild(waitLine);
@@ -1347,44 +1456,63 @@ async function series(question){
     const d = await api('/api/_test/series', jpost(body));
     holder.textContent = '';
     if(extraDefects.size) d.arms.current.extra = Array.from(extraDefects).join(',');
-    const left = d.arms.profile || d.arms.current, right = d.arms.profile ? d.arms.current : null;
-    const head = el('div', {cls: 'card-head'}, [
+    const armKeys = d.arms.profile ? ['profile', 'current'] : ['current'];
+    const arms = d.arms, rows = d.rows || [];
+    const left = arms[armKeys[0]], right = armKeys.length > 1 ? arms.current : null;
+    const v = seriesVerdict(rows, arms, armKeys);
+    holder.appendChild(el('div', {cls: 'card-head'}, [
       el('h3', {}, [el('span', {cls: 'mono', text: '×' + d.runs}), el('span', {cls: 'tag-l mono', text: left.profile}),
         right ? el('span', {cls: 'muted', text: '↔'}) : null, right ? el('span', {cls: 'tag-r mono', text: armLabel(right)}) : null]),
-      el('span', {cls: 'cap mono', text: t('x5Title', {n: d.runs})}), el('span', {cls: 'grow'})]);
-    holder.appendChild(head);
-    const verdictBox = el('div', {cls: 'verdict'});
-    holder.appendChild(verdictBox);
-    const cols = el('div', {cls: 'x5-cols' + (right ? '' : ' one')});
-    holder.appendChild(cols);
-    const registry = {};
-    const L = renderSeriesArm(cols, 'left', left, 'l', registry);
-    const R = right ? renderSeriesArm(cols, 'right', right, 'r', registry) : null;
-    const v = seriesVerdict(left, right, L.letters, R ? R.letters : null);
-    verdictBox.appendChild(el('span', {cls: 'vpill' + (v.state === 'diff' ? ' diff' : ''), text: v.state === 'diff' ? t('x5FreqDiff') : t('x5FreqSame')}));
-    verdictBox.appendChild(el('p', {text: v.text}));
+      el('span', {cls: 'vpill' + (v.state === 'diff' ? ' diff' : ''), text: v.state === 'diff' ? t('x5FreqDiff') : t('x5FreqSame')}),
+      el('span', {cls: 'cap', text: t('x5Title', {n: d.runs})}), el('span', {cls: 'grow'})]));
+    holder.appendChild(el('div', {cls: 'verdict'}, [el('p', {text: v.text})]));
+    holder.appendChild(renderSeriesTable(rows, arms, armKeys, d.runs));
+    const each = renderEachRun(rows, arms, armKeys);
+    const metas = armKeys.map(function(a){
+      const arm = arms[a];
+      addSpend(arm.usage.cost_usd);
+      return armLabel(arm) + ' · in ' + arm.usage.input_tokens + ' / out ' + arm.usage.output_tokens +
+        ' tok' + costPart(arm.usage.cost_usd) + ' · ' + (Math.round(arm.elapsed_ms) / 1000).toFixed(1) +
+        ' ' + t('sec') + ' · ' + t('promptV') + ' ' + arm.prompt_version;
+    });
+    const meta = el('div', {cls: 'x5-meta', hidden: true}, metas.map(function(line){ return el('div', {text: line}); }));
     const evidence = function(){
-      const lines = [t('evQuestion') + ': ' + composed.message, '×' + d.runs + ' · ' + left.profile + (right ? ' ↔ ' + armLabel(right) : ''), v.text, ''];
-      [left, right].filter(Boolean).forEach(function(arm, k){
-        const ls = k ? R.letters : L.letters;
+      const lines = [t('evQuestion') + ': ' + composed.message, '×' + d.runs + ' · ' + armKeys.map(function(a){ return armLabel(arms[a]); }).join(' ↔ '), v.text, ''];
+      rows.forEach(function(row){
+        lines.push(rowText(row) + ' · ' + armKeys.map(function(a){
+          const c = row.arms[a];
+          return armLabel(arms[a]) + ' ' + c.count + '/' + d.runs + (c.count ? ' (#' + c.runs.join(', #') + ')' : '');
+        }).join(' · '));
+      });
+      lines.push('');
+      armKeys.forEach(function(a){
+        const arm = arms[a];
         lines.push(armLabel(arm) + ' · ' + toolSummary(arm));
-        arm.runs.forEach(function(r, i){ lines.push('  #' + (i + 1) + ' ' + ls[i] + ' · ' + r.tools_called.join(', ') + ' · ' + t('evTrace') + ' ' + r.request_id); });
+        arm.runs.forEach(function(r, i){ lines.push('  #' + (i + 1) + ' · ' + r.tools_called.join(', ') + ' · ' + t('evTrace') + ' ' + r.request_id); });
       });
       return lines.join('\n');
     };
-    head.appendChild(el('button', {text: t('reference'), onclick: function(){ openReference(tierFromRuns(left)); }}));
-    head.appendChild(el('button', {text: t('copyEvidence'), onclick: function(){ copyText(evidence(), this); }}));
-    const foot = el('div', {cls: 'actions'});
-    foot.appendChild(el('span', {cls: 'note grow', text: t('x5Note')}));
+    const refRow = rows.filter(function(r){ return r.reference; })[0];
+    const eachCaret = el('span', {cls: 'muted', text: '▸'});
+    const eachBtn = el('button', {'aria-expanded': 'false'}, [eachCaret, ' ' + t('x5EachRun') + ' ',
+      el('span', {cls: 'note', text: t('x5EachRunSub', {n: d.runs * armKeys.length})})]);
+    eachBtn.onclick = function(){
+      each.hidden = !each.hidden;
+      eachBtn.setAttribute('aria-expanded', String(!each.hidden));
+      eachCaret.textContent = each.hidden ? '▸' : '▾';
+    };
     const tt = el('button', {'aria-expanded': 'false', text: '▸ ' + t('tokensTime')});
     tt.onclick = function(){
-      const open = L.meta.hidden;
-      [L, R].filter(Boolean).forEach(function(x){ x.meta.hidden = !open; });
-      tt.setAttribute('aria-expanded', String(open));
-      tt.textContent = (open ? '▾ ' : '▸ ') + t('tokensTime');
+      meta.hidden = !meta.hidden;
+      tt.setAttribute('aria-expanded', String(!meta.hidden));
+      tt.textContent = (meta.hidden ? '▸ ' : '▾ ') + t('tokensTime');
     };
-    foot.appendChild(tt);
-    holder.appendChild(foot);
+    holder.appendChild(el('div', {cls: 'actions'}, [
+      el('button', {cls: 'primary', text: t('copyEvidence'), onclick: function(){ copyText(evidence(), this); }}),
+      el('button', {text: t('reference'), onclick: function(){ openReference(refRow ? refRow.reference.tier : tierFromRuns(left)); }}),
+      eachBtn, el('span', {cls: 'grow'}), tt]));
+    holder.appendChild(each);
+    holder.appendChild(meta);
     sessionId = null;
     lastStep = 0;
     renderComposerHint();
