@@ -17,7 +17,7 @@ _NAMED = {"final_amount": "receives", "spread_pct": "spread",
           "daily_remaining_eur": "dailyLeft", "monthly_remaining_eur": "monthlyLeft"}
 
 
-def tool_calls(request_id: str) -> list[dict]:
+def calls_in(tree: dict) -> list[dict]:
     out = []
 
     def walk(node):
@@ -30,8 +30,12 @@ def tool_calls(request_id: str) -> list[dict]:
         for child in node.get("children") or []:
             walk(child)
 
-    walk(tracing.get(request_id) or {})
+    walk(tree or {})
     return out
+
+
+def tool_calls(request_id: str) -> list[dict]:
+    return calls_in(tracing.get(request_id))
 
 
 def _number(text: str) -> float:

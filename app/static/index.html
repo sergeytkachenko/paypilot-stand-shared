@@ -294,6 +294,37 @@
   .run-a .meta-l{display:flex;gap:6px;flex-wrap:wrap;font-size:var(--fs-xs);color:var(--muted)}
   .x5-each .why{padding:var(--s2) var(--s4) var(--s3);font-size:var(--fs-xs);color:var(--muted);border-top:1px solid var(--line)}
   .x5-meta{padding:var(--s2) var(--s4);font:var(--fs-xs) var(--mono);color:var(--muted);border-top:1px solid var(--line)}
+  .actions button.on{background:var(--accent-bg);color:var(--accent);border-color:var(--accent)}
+  .x5-why{border-top:1px solid var(--line);padding:var(--s3) var(--s4);display:flex;
+          flex-direction:column;gap:var(--s3)}
+  .x5-why .why-h{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
+  .x5-why .pair{display:flex;align-items:center;gap:6px;font-size:var(--fs-xs)}
+  .x5-why .pair .l{color:var(--left);font-weight:600}
+  .x5-why .pair .r{color:var(--right);font-weight:600}
+  .x5-why .why-top{margin:0;font-size:var(--fs-lg);line-height:1.4;font-weight:600;text-wrap:pretty}
+  .x5-why .why-raw{margin:0;font-size:var(--fs-sm);line-height:1.6;white-space:pre-wrap}
+  .x5-why .why-t{display:grid;grid-template-columns:minmax(150px,auto) minmax(0,1fr);
+                 border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+  .x5-why .why-t .tr{display:contents}
+  .x5-why .why-t .k{padding:10px 12px;display:flex;align-items:flex-start}
+  .x5-why .why-t .v{padding:10px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+  .x5-why .why-t .tr+.tr .k,.x5-why .why-t .tr+.tr .v{border-top:1px solid var(--line)}
+  .x5-why .badge{font:600 var(--fs-xs) var(--sans);border-radius:99px;padding:1px 10px;
+                 white-space:nowrap;background:var(--surface-2);color:var(--text);
+                 border:1px solid var(--line-strong)}
+  .x5-why .badge.stable{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-line)}
+  .x5-why .badge.noise{color:var(--muted)}
+  .x5-why .badge.cause{background:var(--accent-bg);color:var(--accent);border-color:var(--accent)}
+  .x5-why .txt{font-size:var(--fs-sm);line-height:1.55;text-wrap:pretty}
+  .x5-why .chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .x5-why .runs{display:flex;gap:4px;align-items:center;font:var(--fs-xs) var(--mono);
+                border-radius:4px;padding:1px 6px}
+  .x5-why .runs.l{background:var(--left-bg);color:var(--left)}
+  .x5-why .runs.r{background:var(--right-bg);color:var(--right)}
+  .x5-why .runs a{color:inherit;text-decoration:none;font-weight:600}
+  .x5-why .runs a:hover{text-decoration:underline}
+  .x5-why .pl{font:var(--fs-xs) var(--mono);color:var(--accent);text-decoration:none}
+  .x5-why .note{font-size:var(--fs-xs);color:var(--muted);line-height:1.5;text-wrap:pretty}
   .note{font-size:var(--fs-xs);color:var(--muted)}
 
   .drawer{width:420px;flex:none;border-left:1px solid var(--line-strong);background:var(--surface);display:flex;flex-direction:column;min-height:0}
@@ -374,7 +405,10 @@
     .msgs{padding:14px}
     .composer-in{padding:10px 14px 14px}
     .actrow #cmpBtn{flex:1}
-    .cmp-cols,.raw,.x5-each .cols{grid-template-columns:minmax(0,1fr)}
+    .cmp-cols,.raw,.x5-each .cols,.x5-why .why-t{grid-template-columns:minmax(0,1fr)}
+    .x5-why .why-t .tr+.tr .v{border-top:none}
+    .x5-why .why-t .v{padding-top:0}
+    .x5-why .why-t .k{padding-bottom:6px}
     .x5-each .col+.col{border-left:none;border-top:1px solid var(--line)}
     .x5t{grid-template-columns:repeat(var(--arms),minmax(0,1fr))}
     .x5t .th.ans,.x5t .ans-c,.x5t .tool-n{grid-column:1/-1}
@@ -666,6 +700,13 @@ const I18N = {
     x5VerdictSame: 'Обидва профілі дали ті самі відповіді з тими самими частотами в усіх {n} прогонах.',
     x5Single: 'Профіль clean без дефектів — {n} прогонів лише на ньому: так видно власну похибку моделі.',
     x5Tools: '{t}: {a} → {b}',
+    x5Why: 'Пояснити різницю', x5WhyTip: 'Легка модель читає всі {n} прогонів і пояснює, чим {a} відрізняється від {b}',
+    x5WhyTitle: 'Пояснення різниці', x5WhyWait: 'легка модель читає {n} прогонів…',
+    x5WhyAgain: 'Пояснити ще раз', x5WhyNone: '(модель нічого не відповіла)',
+    x5WhyNote: 'Модель прочитала відповіді, виклики інструментів і різницю промптів. Біля кожного твердження є посилання на прогони — звірте їх, перш ніж копіювати як доказ.',
+    x5WhyStable: 'Стабільна різниця', x5WhySometimes: 'Не в кожному прогоні',
+    x5WhyNoise: 'Випадковість', x5WhyCause: 'Ймовірна причина',
+    x5WhyPrompt: 'що змінено в промпті?',
     tokensTime: 'Токени й час', noToolsCalled: 'жодного інструмента не викликано', emptyRun: '(порожньо)',
     refTitle: 'Як має бути', refBadge: 'еталон для clean',
     refSrc: 'Значення з рушіїв банку (app/engines/policy.py). На профілях занять агент може відповідати інакше — це й шукаємо.',
@@ -790,6 +831,13 @@ const I18N = {
     x5VerdictSame: 'Both profiles gave the same answers at the same frequencies in all {n} runs.',
     x5Single: 'clean with no defects — {n} runs on it alone: this shows the model’s own error.',
     x5Tools: '{t}: {a} → {b}',
+    x5Why: 'Explain the difference', x5WhyTip: 'A light model reads all {n} runs and explains how {a} differs from {b}',
+    x5WhyTitle: 'Explanation of the difference', x5WhyWait: 'the light model is reading {n} runs…',
+    x5WhyAgain: 'Explain again', x5WhyNone: '(the model returned nothing)',
+    x5WhyNote: 'The model read the answers, the tool calls and the prompt diff. Every claim links to the runs behind it — check them before copying this as evidence.',
+    x5WhyStable: 'Stable difference', x5WhySometimes: 'Not in every run',
+    x5WhyNoise: 'Chance', x5WhyCause: 'Probable cause',
+    x5WhyPrompt: 'what changed in the prompt?',
     tokensTime: 'Tokens and time', noToolsCalled: 'no tools called', emptyRun: '(empty)',
     refTitle: 'What’s correct', refBadge: 'baseline for clean',
     refSrc: 'Values from the bank engines (app/engines/policy.py). Lesson profiles may answer differently — that’s what you look for.',
@@ -1424,6 +1472,106 @@ function renderEachRun(rows, arms, armKeys){
   return wrap;
 }
 
+const WHY_KINDS = {stable: 'x5WhyStable', sometimes: 'x5WhySometimes',
+                   noise: 'x5WhyNoise', cause: 'x5WhyCause'};
+
+function whyKind(kind){ return WHY_KINDS[kind] ? kind : 'noise'; }
+
+function whyRunChips(arms, armKeys, row){
+  return [['variant', armKeys[1], 'r'], ['baseline', armKeys[0], 'l']].map(function(spec){
+    const nums = row[spec[0] + '_runs'] || [];
+    const arm = arms[spec[1]];
+    if(!nums.length || !arm) return null;
+    return el('span', {cls: 'runs ' + spec[2]}, [armLabel(arm)].concat(nums.map(function(n){
+      const run = arm.runs[n - 1];
+      return el('a', {href: '#', text: '#' + n, onclick: function(ev){
+        ev.preventDefault();
+        if(run) openTrace(run.request_id);
+      }});
+    })));
+  }).filter(Boolean);
+}
+
+function whyAsText(r, arms, armKeys, n){
+  const lines = [t('x5WhyTitle') + ': ' + armLabel(arms[armKeys[0]]) + ' ×' + n +
+                 ' ↔ ' + armLabel(arms[armKeys[1]]) + ' ×' + n, r.headline, r.explanation];
+  (r.rows || []).forEach(function(row){
+    const refs = [];
+    if((row.variant_runs || []).length) refs.push(armLabel(arms[armKeys[1]]) + ' #' + row.variant_runs.join(' #'));
+    if((row.baseline_runs || []).length) refs.push(armLabel(arms[armKeys[0]]) + ' #' + row.baseline_runs.join(' #'));
+    lines.push('[' + t(WHY_KINDS[whyKind(row.kind)]) + '] ' + row.text +
+               (refs.length ? ' · ' + refs.join(' · ') : ''));
+  });
+  lines.push(t('model') + ' ' + (r.model || '—'));
+  return lines.filter(Boolean).join('\n');
+}
+
+function renderWhy(box, r, arms, armKeys, again){
+  box.textContent = '';
+  const n = arms[armKeys[0]].runs.length;
+  box.appendChild(el('div', {cls: 'why-h'}, [
+    el('b', {text: t('x5WhyTitle')}),
+    el('span', {cls: 'pair mono'}, [
+      el('span', {cls: 'l', text: armLabel(arms[armKeys[0]]) + ' ×' + n}),
+      el('span', {cls: 'muted', text: '↔'}),
+      el('span', {cls: 'r', text: armLabel(arms[armKeys[1]]) + ' ×' + n})]),
+    el('span', {cls: 'mono note', text: (r.model || '—') +
+      (r.elapsed_ms != null ? ' · ' + (r.elapsed_ms / 1000).toFixed(1) + ' ' + t('sec') : '') +
+      (r.usage && r.usage.cost_usd != null ? ' · ≈ ' + fmtUsd(r.usage.cost_usd) : '')}),
+    el('span', {cls: 'grow'}),
+    el('button', {cls: 'quiet', text: t('copy'),
+      onclick: function(){ copyText(whyAsText(r, arms, armKeys, n), this); }}),
+    el('button', {cls: 'quiet', text: t('x5WhyAgain'), onclick: again})]));
+  if(r.headline) box.appendChild(renderRich(r.headline, el('p', {cls: 'why-top'})));
+  if(r.explanation) box.appendChild(renderRich(r.explanation, el('p', {cls: 'why-raw'})));
+  if(!r.headline && !r.explanation && !(r.rows || []).length){
+    box.appendChild(el('p', {cls: 'why-raw', text: t('x5WhyNone')}));
+  }
+  if((r.rows || []).length){
+    const grid = el('div', {cls: 'why-t'});
+    r.rows.forEach(function(row){
+      const kind = whyKind(row.kind);
+      const chips = whyRunChips(arms, armKeys, row);
+      if(kind === 'cause'){
+        chips.push(el('a', {href: '#', cls: 'pl', text: t('x5WhyPrompt'),
+          onclick: function(ev){ ev.preventDefault(); showPrompt('diff'); }}));
+      }
+      grid.appendChild(el('div', {cls: 'tr'}, [
+        el('span', {cls: 'k'}, [el('span', {cls: 'badge ' + kind, text: t(WHY_KINDS[kind])})]),
+        el('span', {cls: 'v'}, [renderRich(row.text, el('span', {cls: 'txt'})),
+          chips.length ? el('span', {cls: 'chips'}, chips) : null])]));
+    });
+    box.appendChild(grid);
+  }
+  box.appendChild(el('span', {cls: 'note', text: t('x5WhyNote')}));
+}
+
+async function loadWhy(box, message, arms, armKeys){
+  const n = arms[armKeys[0]].runs.length;
+  const retry = function(){ loadWhy(box, message, arms, armKeys); };
+  box.textContent = '';
+  box.appendChild(el('div', {cls: 'why-h'}, [el('span', {cls: 'dots'}, [el('i'), el('i'), el('i')]),
+    el('span', {cls: 'muted', text: t('x5WhyWait', {n: n * armKeys.length})})]));
+  const payload = function(key){
+    return arms[key].runs.map(function(run){
+      return {request_id: run.request_id, answer: run.answer || ''};
+    });
+  };
+  try{
+    const r = await api('/api/_test/series/explain', jpost({message: message,
+      lang: ui.lang === 'en' ? 'en' : 'uk',
+      baseline: payload(armKeys[0]), variant: payload(armKeys[1])}));
+    renderWhy(box, r, arms, armKeys, retry);
+    if(r.usage) addSpend(r.usage.cost_usd);
+  }catch(e){
+    box.textContent = '';
+    box.appendChild(el('div', {cls: 'why-h'}, [el('b', {text: t('errTitle')}),
+      el('span', {cls: 'mono note', text: (e.status ? 'HTTP ' + e.status + ' · ' : '') + e.message}),
+      el('span', {cls: 'grow'}),
+      el('button', {cls: 'quiet', text: t('retry'), onclick: retry})]));
+  }
+}
+
 function seriesVerdict(rows, arms, armKeys){
   const n = arms[armKeys[0]].runs.length;
   if(armKeys.length < 2) return {state: 'same', text: t('x5Single', {n: n})};
@@ -1517,10 +1665,28 @@ async function series(question){
       tt.setAttribute('aria-expanded', String(!meta.hidden));
       tt.textContent = (meta.hidden ? '▸ ' : '▾ ') + t('tokensTime');
     };
+    const why = el('section', {cls: 'x5-why', 'aria-label': t('x5WhyTitle'), hidden: true});
+    const whyCaret = el('span', {cls: 'muted', text: '▸'});
+    const whyBtn = armKeys.length > 1
+      ? el('button', {'aria-expanded': 'false', title: t('x5WhyTip', {n: d.runs * armKeys.length,
+          a: armLabel(arms[armKeys[0]]), b: armLabel(arms[armKeys[1]])})},
+        [whyCaret, ' ' + t('x5Why')])
+      : null;
+    let whyAsked = false;
+    if(whyBtn) whyBtn.onclick = function(){
+      why.hidden = !why.hidden;
+      whyBtn.setAttribute('aria-expanded', String(!why.hidden));
+      whyBtn.classList.toggle('on', !why.hidden);
+      whyCaret.textContent = why.hidden ? '▸' : '▴';
+      if(why.hidden || whyAsked) return;
+      whyAsked = true;
+      loadWhy(why, composed.message, arms, armKeys);
+    };
     holder.appendChild(el('div', {cls: 'actions'}, [
       el('button', {cls: 'primary', text: t('copyEvidence'), onclick: function(){ copyText(evidence(), this); }}),
       el('button', {text: t('reference'), onclick: function(){ openReference(refRow ? refRow.reference.tier : tierFromRuns(left)); }}),
-      eachBtn, el('span', {cls: 'grow'}), tt]));
+      whyBtn, eachBtn, el('span', {cls: 'grow'}), tt]));
+    holder.appendChild(why);
     holder.appendChild(each);
     holder.appendChild(meta);
     sessionId = null;
