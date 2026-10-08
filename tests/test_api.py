@@ -650,3 +650,28 @@ def test_ui_diffs_the_prompt_against_clean_and_prices_every_run():
         assert marker in ui, marker
     prompt_render = ui.split("function renderPromptLines", 1)[1].split("async function showPrompt", 1)[0]
     assert "innerHTML" not in prompt_render
+
+
+def test_ukrainian_question_sends_the_reply_language_rule_without_touching_the_audited_prompt(monkeypatch):
+    from app.agent import language, loop
+    from app.agent.providers.base import ModelResponse
+
+    calls = []
+
+    class Recorder:
+        name = "anthropic"
+        model = "agent-model"
+
+        def complete(self, system, messages, tools):
+            calls.append(system)
+            return ModelResponse(text="ok", input_tokens=5, output_tokens=1, model=self.model)
+
+    monkeypatch.setattr(loop, "get_provider", Recorder)
+    uk = client.post("/chat", json={"message": "Я CUS-0001. Який у мене баланс?"}).json()
+    en = client.post("/chat", json={"message": "I am CUS-0001. What is my balance?"}).json()
+    assert language.UK_RULE in calls[0]
+    assert language.UK_RULE not in calls[1]
+    assert uk["prompt_version"] == en["prompt_version"] == "base.v1"
+    assert language.UK_RULE not in client.get("/api/_test/prompt").json()["text"]
+    tree = client.get(f"/api/_test/traces/{uk['request_id']}").json()
+    assert tree["attributes"]["reply.language_detected"] == "uk"
