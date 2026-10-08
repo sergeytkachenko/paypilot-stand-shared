@@ -1687,7 +1687,7 @@ async function showExplanation(box, message, d){
   box.appendChild(body);
   try{
     const r = await api('/api/_test/compare/explain', jpost({
-      message: message, lang: ui.lang,
+      message: message, lang: ui.lang === 'en' ? 'en' : 'uk',
       clean: {request_id: d.clean.request_id, answer: d.clean.answer || ''},
       profile: {request_id: d.profile.request_id, answer: d.profile.answer || ''}}));
     body.textContent = '';
