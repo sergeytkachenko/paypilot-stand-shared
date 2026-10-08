@@ -80,3 +80,29 @@ def test_outcomes_from_tool_calls():
     assert limits["outcome"] == "limits"
     assert limits["values"] == [{"kind": "dailyLeft", "unit": "EUR", "value": 4000.0}]
     assert _run("Your balance is 1,250.00 EUR.")["facts"]["outcome"] == "answered"
+
+
+def test_comma_decimals_parse_like_dot_decimals():
+    uk = answers.classify("Конвертуй 6000 EUR в USD", "Ви отримаєте 6 463,04 USD, спред 0,9%.", [_fx(QUOTE)])
+    en = answers.classify(QUESTION, "You will receive 6,463.04 USD, spread 0.9%.", [_fx(QUOTE)])
+    assert uk["values"] == en["values"] and uk["key"] == en["key"]
+    assert uk["reference"]["ok"] is True
+
+
+def test_large_amounts_keep_their_cents_in_the_key():
+    big = dict(QUOTE, amount=12000.0, final_amount=12463.04)
+    a = answers.classify(QUESTION, "You get 12,463.04 USD at 0.9%.", [_fx(big)])
+    b = answers.classify(QUESTION, "You get 12,463.40 USD at 0.9%.", [_fx(big)])
+    assert a["key"] != b["key"]
+
+
+def test_a_fee_is_not_taken_for_the_amount_received():
+    facts = answers.classify(QUESTION, "The fee is 58.70 USD, rate 1.086957, allowance 100% used.", [_fx(QUOTE)])
+    assert [v["value"] for v in facts["values"]] == [6463.04, 0.9]
+
+
+def test_reference_uses_the_customer_tier_not_the_tier_the_tool_reported():
+    wrong = dict(QUOTE, tier="tier1", spread_pct=1.5, final_amount=6423.91)
+    call = {"name": "quote_fx", "arguments": {"customer_id": "CUS-0005"}, "result": wrong}
+    facts = answers.classify(QUESTION, "You will receive 6,423.91 USD, spread 1.5%.", [call])
+    assert facts["reference"]["tier"] == "tier2" and facts["reference"]["ok"] is False

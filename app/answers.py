@@ -2,13 +2,14 @@
 import json
 import re
 
-from app import tracing
+from app import db, tracing
 from app.engines import fx as fx_engine
 from app.engines import policy
 
 _SYMBOLS = {"€": "EUR", "$": "USD", "£": "GBP"}
 _CODES = "|".join(sorted(policy.RATES_TO_EUR))
-_NUM = r"\d{1,3}(?:[,   ]\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?"
+_SEP = "\u00a0\u202f "
+_NUM = rf"\d{{1,3}}(?:[,{_SEP}]\d{{3}})+(?:[.,]\d+)?|\d+(?:[.,]\d+)?"
 _VALUE_RE = re.compile(
     rf"(?:(?P<pre>{_CODES}|[€$£])\s?)?(?P<num>{_NUM})(?:\s?(?P<post>{_CODES}|%))?")
 _ANY_NUM_RE = re.compile(_NUM)
@@ -34,7 +35,13 @@ def tool_calls(request_id: str) -> list[dict]:
 
 
 def _number(text: str) -> float:
-    return round(float(re.sub(r"[,   ]", "", text)), 2)
+    digits = re.sub(f"[{_SEP}]", "", text)
+    if "," in digits and "." in digits:
+        decimal = "," if digits.rindex(",") > digits.rindex(".") else "."
+        digits = digits.replace("." if decimal == "," else ",", "").replace(",", ".")
+    elif "," in digits:
+        digits = digits.replace(",", "" if re.fullmatch(r"\d{1,3}(?:,\d{3})+", digits) else ".")
+    return round(float(digits), 2)
 
 
 def _question_numbers(message: str) -> set[float]:
@@ -69,20 +76,22 @@ def _fx_values(quote: dict, stated: list[dict]) -> list[dict]:
     pcts = [v for v in stated if v["unit"] == "%"]
     tool_final = round(float(quote.get("final_amount") or 0), 2)
     tool_spread = round(float(quote.get("spread_pct") or 0), 2)
-    if any(v["value"] == tool_final for v in amounts) or not amounts:
-        receives = tool_final
-    else:
-        receives = max(v["value"] for v in amounts)
-    if any(v["value"] == tool_spread for v in pcts) or not pcts:
-        spread = tool_spread
-    else:
-        spread = pcts[0]["value"]
+    near = [v["value"] for v in amounts if abs(v["value"] - tool_final) <= 0.2 * tool_final]
+    receives = tool_final if tool_final in near or not near else min(near, key=lambda x: abs(x - tool_final))
+    rates = [v["value"] for v in pcts if v["value"] < 10]
+    spread = tool_spread if tool_spread in rates or not rates else rates[0]
     return [{"kind": "receives", "unit": target, "value": receives},
             {"kind": "spread", "unit": "%", "value": spread}]
 
 
-def _fx_reference(quote: dict, values: list[dict]) -> dict | None:
-    tier = quote.get("tier")
+def _customer_tier(customer_id) -> str | None:
+    row = db.one("SELECT tier FROM customers WHERE id = ?", (customer_id,)) if customer_id else None
+    return row["tier"] if row else None
+
+
+def _fx_reference(call: dict, values: list[dict]) -> dict | None:
+    quote = call["result"]
+    tier = _customer_tier(call["arguments"].get("customer_id")) or quote.get("tier")
     if tier not in policy.TIERS:
         return None
     try:
@@ -124,7 +133,7 @@ def classify(message: str, answer: str, calls: list[dict]) -> dict:
         outcome, values = "escalated", _named(calls, stated)
     elif quotes:
         values = _fx_values(quotes[-1]["result"], stated)
-        reference = _fx_reference(quotes[-1]["result"], values)
+        reference = _fx_reference(quotes[-1], values)
         outcome = "fx"
     elif _ok_results(calls, "check_limits"):
         outcome, values = "limits", _named(calls, stated)
@@ -135,7 +144,7 @@ def classify(message: str, answer: str, calls: list[dict]) -> dict:
         outcome, values = "asked", []
     else:
         outcome, values = "answered", _named(calls, stated)
-    key = outcome + "|" + "|".join(f"{v['kind']}:{v['value']:g}{v['unit']}" for v in values)
+    key = outcome + "|" + "|".join(f"{v['kind']}:{v['value']:.2f}{v['unit']}" for v in values)
     return {"outcome": outcome, "values": values, "reference": reference, "key": key}
 
 
