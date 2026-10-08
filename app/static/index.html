@@ -240,21 +240,30 @@
   .x5-cols.one{grid-template-columns:minmax(0,1fr)}
   .x5-same{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
   .x5-same b{font:600 var(--fs-lg) var(--mono)}
-  .letters{display:flex;gap:4px}
-  .letters span{width:24px;height:24px;border-radius:4px;display:grid;place-items:center;font:600 var(--fs-xs) var(--mono);
-                background:var(--surface-2);border:1px solid var(--line-strong)}
-  .letters span.alt{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-line)}
-  .groups{display:flex;flex-direction:column;gap:2px;font:var(--fs-sm) var(--mono)}
-  .bars{display:grid;grid-template-columns:auto minmax(60px,1fr) auto;gap:4px var(--s2);align-items:center;font:var(--fs-xs) var(--mono)}
+  .letters{display:flex;gap:6px}
+  .letters .ln{display:flex;flex-direction:column;align-items:center;gap:2px;font:var(--fs-xs) var(--mono);color:var(--muted)}
+  .lt{width:24px;height:24px;border-radius:5px;display:inline-grid;place-items:center;flex:none;font:600 var(--fs-xs) var(--mono);
+      color:var(--text);background:var(--surface-2);border:1px solid var(--line-strong)}
+  .lt.alt{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-line)}
+  .run-h .lt{width:22px;height:22px}
+  .x5-sec{display:flex;flex-direction:column;gap:6px}
+  .groups{display:flex;flex-direction:column;gap:4px}
+  .groups .g{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:var(--fs-sm)}
+  .groups .g .v{font:600 var(--fs-sm) var(--mono)}
+  .groups .g .c{color:var(--muted)} .groups .g.alt .c{color:var(--warn)}
+  .bars{display:grid;grid-template-columns:auto minmax(60px,1fr) auto;gap:6px var(--s3);align-items:center;font:var(--fs-sm) var(--mono)}
+  .bars .k{color:var(--muted)} .bars .part{color:var(--warn)}
   .bar{height:6px;border-radius:3px;background:var(--line)}
   .bar i{display:block;height:100%;border-radius:3px;background:var(--muted)}
   .l .bar i{background:var(--left)} .r .bar i{background:var(--right)}
+  .bar.part i{background:var(--warn)}
   .runs{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
   .run{border-top:1px solid var(--line)}
-  .run:first-child{border-top:none}
-  .run-h{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto auto;gap:var(--s2);align-items:center;width:100%;
+  .run-h.run-cols{border-top:none;font:600 var(--fs-xs) var(--sans);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;cursor:default}
+  .run-h{display:grid;grid-template-columns:36px 22px minmax(0,1fr) auto 14px;gap:var(--s2);align-items:center;width:100%;
          background:none;border:none;border-radius:0;padding:6px 10px;font:var(--fs-xs) var(--mono);text-align:left}
   .run-h .tools{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .run-h .tools b{color:var(--warn)}
   .run-a{padding:6px 10px 10px;font-size:var(--fs-sm);white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg)}
   .note{font-size:var(--fs-xs);color:var(--muted)}
 
@@ -610,7 +619,9 @@ const I18N = {
     cProfile: 'профіль', cDefects: 'дефекти', cPrompt: 'промпт', cSession: 'сесія', cClock: 'час стенду', cIndex: 'індекс пошуку', cModel: 'модель',
     newNoHistory: 'нова, без історії чату', eq: '= однаково', neq: '≠ різниться', comparing: 'порівнюю…',
     x5Title: 'те саме питання {n} разів · кожен прогін — нова сесія', x5Running: 'ганяю {n} разів… це до {m} викликів моделі, зачекайте',
-    x5Same: '{k} з {n}', x5SameSub: 'відповідей однакові за числами', x5FreqDiff: 'частоти різні', x5FreqSame: 'частоти однакові',
+    x5Same: '{k} з {n}', x5SameSub: 'прогонів дали ту саму відповідь', x5Variants: 'Варіанти відповіді', x5InAll: '— в усіх {n} прогонах',
+    x5InOne: '— в 1 прогоні', x5InK: '— у {k} прогонах', x5Other: ', інші числа', x5OtherAnswer: ', інша відповідь',
+    x5ToolsH: 'Виклики інструментів · з {n} прогонів', x5RunsAria: 'прогони 1–{n}: {l}', x5ColNo: '№', x5ColTools: 'інструменти', x5ColTrace: 'трейс', x5FreqDiff: 'частоти різні', x5FreqSame: 'частоти однакові',
     x5VerdictDiff: 'Розподіл відповідей або викликів інструментів різниться: {d}.', x5VerdictSame: 'Обидві сторони поводяться однаково в усіх {n} прогонах.',
     x5Single: 'Профіль clean без дефектів — {n} прогонів лише на ньому: так видно власну похибку моделі.',
     x5Groups: 'групи {l}: {r}', x5Tools: '{t}: {a} → {b}',
@@ -723,7 +734,9 @@ const I18N = {
     cProfile: 'profile', cDefects: 'defects', cPrompt: 'prompt', cSession: 'session', cClock: 'stand clock', cIndex: 'search index', cModel: 'model',
     newNoHistory: 'new, no chat history', eq: '= same', neq: '≠ differs', comparing: 'comparing…',
     x5Title: 'the same question {n} times · every run is a new session', x5Running: 'running {n} times… up to {m} model calls, please wait',
-    x5Same: '{k} of {n}', x5SameSub: 'answers identical by their numbers', x5FreqDiff: 'frequencies differ', x5FreqSame: 'frequencies match',
+    x5Same: '{k} of {n}', x5SameSub: 'runs gave the same answer', x5Variants: 'Answer variants', x5InAll: '— in all {n} runs',
+    x5InOne: '— in 1 run', x5InK: '— in {k} runs', x5Other: ', different numbers', x5OtherAnswer: ', different answer',
+    x5ToolsH: 'Tool calls · out of {n} runs', x5RunsAria: 'runs 1–{n}: {l}', x5ColNo: '#', x5ColTools: 'tools', x5ColTrace: 'trace', x5FreqDiff: 'frequencies differ', x5FreqSame: 'frequencies match',
     x5VerdictDiff: 'The distribution of answers or tool calls differs: {d}.', x5VerdictSame: 'Both sides behave the same in all {n} runs.',
     x5Single: 'clean with no defects — {n} runs on it alone: this shows the model’s own error.',
     x5Groups: 'groups {l}: {r}', x5Tools: '{t}: {a} → {b}',
@@ -1223,7 +1236,8 @@ function answerSignature(run){
   const nums = (run.answer || '').match(/\d[\d,.  ]*\d|\d/g) || [];
   const clean = nums.map(function(s){ return s.replace(/[,  ]/g, '').replace(/\.$/, ''); });
   const sig = clean.filter(function(v, i){ return clean.indexOf(v) === i; });
-  return {key: sig.length ? sig.join('|') : 'tools:' + run.tools_called.join(','), label: sig.slice(0, 2).join(' · ')};
+  const shown = sig.slice(0, 2).map(function(v){ return nums[clean.indexOf(v)].trim(); });
+  return {key: sig.length ? sig.join('|') : 'tools:' + run.tools_called.join(','), label: shown.join(' · ')};
 }
 
 function letterFor(registry, key){
@@ -1240,29 +1254,44 @@ function renderSeriesArm(holder, label, arm, side, registry){
   letters.forEach(function(l, i){ (groups[l] = groups[l] || {n: 0, label: answerSignature(arm.runs[i]).label}).n += 1; });
   const top = Math.max.apply(null, Object.keys(groups).map(function(k){ return groups[k].n; }));
   const major = Object.keys(groups).filter(function(k){ return groups[k].n === top; })[0];
-  col.appendChild(el('div', {cls: 'x5-same'}, [el('b', {text: t('x5Same', {k: top, n: arm.runs.length})}), el('span', {cls: 'note', text: t('x5SameSub')})]));
-  col.appendChild(el('div', {cls: 'letters', 'aria-label': letters.join(' ')}, letters.map(function(l){
-    return el('span', {cls: l === major ? '' : 'alt', text: l}); })));
-  col.appendChild(el('div', {cls: 'groups'}, Object.keys(groups).sort().map(function(l){
-    return el('div', {}, [el('b', {text: l}), ' · ' + (groups[l].label || '—') + ' · ×' + groups[l].n]); })));
+  const n = arm.runs.length;
+  col.appendChild(el('div', {cls: 'x5-same'}, [el('b', {text: t('x5Same', {k: top, n: n})}), el('span', {cls: 'note', text: t('x5SameSub')})]));
+  col.appendChild(el('div', {cls: 'letters', 'aria-label': t('x5RunsAria', {n: n, l: letters.join(' ')})}, letters.map(function(l, i){
+    return el('div', {cls: 'ln'}, [el('span', {cls: 'lt' + (l === major ? '' : ' alt'), text: l}), el('span', {text: String(i + 1)})]); })));
+  col.appendChild(el('div', {cls: 'x5-sec'}, [el('div', {cls: 'sub-h', text: t('x5Variants')}),
+    el('div', {cls: 'groups'}, Object.keys(groups).sort().map(function(l){
+      const g = groups[l], alt = l !== major;
+      const count = g.n === n ? t('x5InAll', {n: n}) : g.n === 1 ? t('x5InOne') : t('x5InK', {k: g.n});
+      return el('div', {cls: 'g' + (alt ? ' alt' : '')}, [el('span', {cls: 'lt' + (alt ? ' alt' : ''), text: l}),
+        el('span', {cls: 'v', text: g.label || '—'}),
+        el('span', {cls: 'c', text: count + (alt ? (g.label ? t('x5Other') : t('x5OtherAnswer')) : '')})]); }))]));
   const bars = el('div', {cls: 'bars'});
   const names = Object.keys(arm.tool_counts).sort();
+  const partial = names.filter(function(name){ return arm.tool_counts[name] < n; });
   if(!names.length) bars.appendChild(el('span', {cls: 'note', text: toolSummary(arm), style: 'grid-column:1/-1'}));
   names.forEach(function(name){
-    const k = arm.tool_counts[name];
-    bars.appendChild(el('span', {text: name}));
-    bars.appendChild(el('span', {cls: 'bar'}, [el('i', {style: 'width:' + Math.round(100 * k / arm.runs.length) + '%'})]));
-    bars.appendChild(el('span', {text: k + '/' + arm.runs.length}));
+    const k = arm.tool_counts[name], part = k < n;
+    bars.appendChild(el('span', {cls: part ? 'part' : '', text: name}));
+    bars.appendChild(el('span', {cls: 'bar' + (part ? ' part' : '')}, [el('i', {style: 'width:' + Math.round(100 * k / n) + '%'})]));
+    bars.appendChild(el('span', {cls: part ? 'part' : 'k', text: t('x5Same', {k: k, n: n})}));
   });
-  col.appendChild(bars);
+  col.appendChild(el('div', {cls: 'x5-sec'}, [el('div', {cls: 'sub-h', text: t('x5ToolsH', {n: n})}), bars]));
   const runs = el('div', {cls: 'runs'});
+  runs.appendChild(el('div', {cls: 'run-h run-cols', 'aria-hidden': 'true'}, [el('span', {text: t('x5ColNo')}), el('span'),
+    el('span', {text: t('x5ColTools')}), el('span', {text: t('x5ColTrace')}), el('span')]));
   arm.runs.forEach(function(run, i){
     const body = el('div', {cls: 'run-a', hidden: true});
     renderRich(run.answer || t('emptyRun'), body);
     const caret = el('span', {cls: 'caret', text: '▸'});
+    const tools = el('span', {cls: 'tools'});
+    if(!run.tools_called.length) tools.textContent = '—';
+    run.tools_called.forEach(function(name, j){
+      if(j) tools.appendChild(document.createTextNode(', '));
+      tools.appendChild(partial.indexOf(name) >= 0 ? el('b', {text: name}) : document.createTextNode(name));
+    });
     const head = el('button', {cls: 'run-h', 'aria-expanded': 'false'}, [
-      el('span', {cls: 'muted', text: '#' + (i + 1)}), el('b', {text: letters[i]}),
-      el('span', {cls: 'tools', text: run.tools_called.length ? run.tools_called.join(', ') : '—'}),
+      el('span', {cls: 'muted', text: '#' + (i + 1)}), el('span', {cls: 'lt' + (letters[i] === major ? '' : ' alt'), text: letters[i]}),
+      tools,
       el('a', {text: run.request_id.slice(0, 8), onclick: function(ev){ ev.stopPropagation(); openTrace(run.request_id); }}), caret]);
     head.onclick = function(){
       body.hidden = !body.hidden;
