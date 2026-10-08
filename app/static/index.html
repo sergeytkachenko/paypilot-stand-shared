@@ -544,7 +544,7 @@ const I18N = {
     unpriced: 'без ціни', menu: 'Меню', langLabel: 'Мова інтерфейсу', themeLabel: 'Тема', themeLight: 'Світла', themeDark: 'Темна',
     projector: 'Великий шрифт для проєктора', newSession: 'Нова сесія', newSessionSub: 'агент забуває цю розмову',
     advanced: 'Розширені налаштування', advancedSub: 'дефекти, час, пам’ять і пошук · з L04',
-    customersLink: 'Дані клієнтів', customersSub: 'ID, рівень, рахунки', lecturer: 'Для лектора', apiLink: 'API (Swagger)',
+    customersLink: 'Дані клієнтів', customersSub: 'ID, рівень, рахунки', lecturer: 'Для лектора', lecturerBadge: 'лектор', apiLink: 'API (Swagger)',
     lockedNote: 'Спільний стенд заблоковано. Серверні дії доступні лише лектору; ваші налаштування діють тільки в цьому браузері.',
     tokenPh: 'токен лектора', signIn: 'Увійти як лектор', resetState: 'Скинути стан',
     resetStateHint: 'повертає базу до seed — для всіх студентів', lecturerOn: 'Ви увійшли як лектор.', signOut: 'Вийти',
@@ -657,7 +657,7 @@ const I18N = {
     unpriced: 'unpriced', menu: 'Menu', langLabel: 'Interface language', themeLabel: 'Theme', themeLight: 'Light', themeDark: 'Dark',
     projector: 'Large type for a projector', newSession: 'New session', newSessionSub: 'the agent forgets this conversation',
     advanced: 'Advanced settings', advancedSub: 'defects, clock, memory and search · from L04',
-    customersLink: 'Customer data', customersSub: 'ID, tier, accounts', lecturer: 'For the lecturer', apiLink: 'API (Swagger)',
+    customersLink: 'Customer data', customersSub: 'ID, tier, accounts', lecturer: 'For the lecturer', lecturerBadge: 'lecturer', apiLink: 'API (Swagger)',
     lockedNote: 'This shared stand is locked. Server actions are lecturer-only; your settings apply to this browser only.',
     tokenPh: 'lecturer token', signIn: 'Sign in as lecturer', resetState: 'Reset state',
     resetStateHint: 'restores the database to the seed — for every student', lecturerOn: 'Signed in as lecturer.', signOut: 'Sign out',
@@ -1758,7 +1758,7 @@ async function refreshState(){
   renderProfileList();
   $('lectItem').hidden = !standLocked;
   $('lectBadge').hidden = !isAdmin;
-  $('lectBadge').textContent = t('lecturer').toLowerCase().indexOf('lect') === 0 ? 'lecturer' : 'лектор';
+  $('lectBadge').textContent = t('lecturerBadge');
   $('adminRow').hidden = !standLocked || isAdmin;
   $('lecturerOn').hidden = !(standLocked && isAdmin);
   $('resetBox').hidden = standLocked && !isAdmin;
