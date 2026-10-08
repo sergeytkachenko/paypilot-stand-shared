@@ -143,3 +143,14 @@ def test_router_cost_and_visibility(jev, systems, monkeypatch):
                     json={"message": "SWIFT fee?", "profile": "lesson-02"}).json()
     assert d["clean"]["router"] == "jev (clean)" and d["profile"]["router"] == ""
     assert "Verified facts" not in client.get("/api/_test/prompt").json()["text"]
+
+
+def test_zero_min_confidence_is_respected(monkeypatch):
+    import importlib
+    monkeypatch.setenv("ROUTER_MIN_CONFIDENCE", "0")
+    reloaded = importlib.reload(config)
+    try:
+        assert reloaded.ROUTER_MIN_CONFIDENCE == 0.0
+    finally:
+        monkeypatch.delenv("ROUTER_MIN_CONFIDENCE")
+        importlib.reload(config)

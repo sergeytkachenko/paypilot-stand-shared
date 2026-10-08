@@ -51,7 +51,8 @@ EXPLAIN_MODEL = os.environ.get("EXPLAIN_MODEL", "")
 ROUTER = os.environ.get("ROUTER", "").strip().lower()
 ROUTER_PROFILES = {p.strip() for p in os.environ.get("ROUTER_PROFILES", "clean").split(",")
                    if p.strip()}
-ROUTER_MIN_CONFIDENCE = _optional_float("ROUTER_MIN_CONFIDENCE") or 0.9
+_router_min_confidence = _optional_float("ROUTER_MIN_CONFIDENCE")
+ROUTER_MIN_CONFIDENCE = 0.9 if _router_min_confidence is None else _router_min_confidence
 TYPESAFE_API_KEY = os.environ.get("TYPESAFE_API_KEY", "")
 TYPESAFE_MODEL = os.environ.get("TYPESAFE_MODEL", "jev-latest")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
