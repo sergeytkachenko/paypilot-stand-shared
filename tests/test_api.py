@@ -279,7 +279,8 @@ def test_ui_series_card_numbers_runs_and_marks_tools_not_called_every_time():
     assert "el('span', {text: String(i + 1)})" in ui
     assert "arm.tool_counts[name] < n" in ui
     assert "partial.indexOf(name) >= 0 ? el('b', {text: name})" in ui
-    for key in ("x5Variants", "x5ToolsH", "x5RunsAria", "x5ColTrace"):
+    for key in ("x5SameSub", "x5Variants", "x5InAll", "x5InOne", "x5InK", "x5Other", "x5OtherAnswer",
+                "x5ToolsH", "x5RunsAria", "x5ColNo", "x5ColTools", "x5ColTrace"):
         assert ui.count(key + ": '") == 2
 
 
