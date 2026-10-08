@@ -3,7 +3,7 @@ import json
 import uuid
 
 from app import config, defects
-from app.agent import pricing, prompt, summarize, tools
+from app.agent import language, pricing, prompt, summarize, tools
 from app.agent.providers.base import get_provider
 from app.tracing import RequestTrace
 
@@ -52,7 +52,9 @@ def run_turn(session_id: str | None, user_message: str) -> dict:
     trace = RequestTrace(sid, state["steps"])
     provider = get_provider()
     system, prompt_version = prompt.build()
+    system, reply_language = language.apply(system, user_message)
     trace.root.attributes["prompt.version"] = prompt_version
+    trace.root.attributes["reply.language_detected"] = reply_language or ""
     trace.root.attributes["llm.provider"] = provider.name
     trace.root.attributes["context.replay_active"] = (
         defects.is_on("D15") and any(m["role"] == "tool" for m in state["messages"]))
