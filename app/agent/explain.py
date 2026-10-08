@@ -1,6 +1,7 @@
 import json
 
 from app import config
+from app.agent import pricing
 from app.agent.providers.base import get_provider
 
 ANSWER_LIMIT = 4000
@@ -143,4 +144,6 @@ def explain(facts: dict) -> dict:
     return {"explanation": (resp.text or "").strip(), "model": resp.model,
             "tool_diffs": len(facts["tool_diffs"]),
             "usage": {"input_tokens": resp.input_tokens,
-                      "output_tokens": resp.output_tokens}}
+                      "output_tokens": resp.output_tokens,
+                      "cost_usd": pricing.cost_usd(resp.model, resp.input_tokens,
+                                                   resp.output_tokens)}}

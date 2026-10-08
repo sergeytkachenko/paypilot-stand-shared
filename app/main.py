@@ -8,7 +8,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 from app import clock, config, db, defects, otel, runctx, tracing
-from app.agent import explain, loop, prompt, summarize, tools
+from app.agent import explain, loop, pricing, prompt, summarize, tools
+from app.engines import policy
 
 defects.validate_startup()
 db.ensure_seeded()
@@ -154,7 +155,9 @@ def _series_arm(message: str, runs: int) -> dict:
         "tool_counts": counts,
         "usage": {
             "input_tokens": sum(r["usage"]["input_tokens"] for r in results),
-            "output_tokens": sum(r["usage"]["output_tokens"] for r in results)},
+            "output_tokens": sum(r["usage"]["output_tokens"] for r in results),
+            "cost_usd": pricing.total_cost_usd(
+                [r["usage"].get("cost_usd") for r in results])},
         "elapsed_ms": sum(r["elapsed_ms"] or 0 for r in results),
     }
 
@@ -267,6 +270,20 @@ def test_seed():
             "customers": db.table_dump("customers"),
             "accounts": db.table_dump("accounts"),
             "transaction_count": len(db.table_dump("transactions"))}
+
+
+REFERENCE_TABLES = ("FX_SPREAD_PCT", "FX_FREE_MONTHLY_ALLOWANCE_EUR",
+                    "RATES_TO_EUR", "TRANSFER_FEES", "DAILY_LIMIT_EUR",
+                    "MONTHLY_LIMIT_EUR", "DISPUTE_WINDOWS_DAYS")
+
+
+@app.get("/api/_test/reference")
+def test_reference():
+    out = {name: getattr(policy, name) for name in REFERENCE_TABLES}
+    out["TRANSFER_FEES"] = {rail: {"flat_fee_eur": flat, "percent_fee": pct}
+                            for rail, (flat, pct) in policy.TRANSFER_FEES.items()}
+    out["source"] = "app/engines/policy.py"
+    return out
 
 
 @app.get("/api/_test/clock")
