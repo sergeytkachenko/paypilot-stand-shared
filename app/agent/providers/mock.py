@@ -6,7 +6,6 @@ import uuid
 from app.agent.providers.base import ModelResponse, Provider
 
 _ID_RE = {
-    "customer": re.compile(r"\bCUS-\d{4}\b", re.I),
     "account": re.compile(r"\bACC-\d{4}\b", re.I),
     "transaction": re.compile(r"\bTX-\d{4}\b", re.I),
     "email": re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+"),
@@ -29,6 +28,11 @@ class MockProvider(Provider):
         input_size = _tokens(system) + sum(_tokens(str(m.get("content") or "")) +
                                            _tokens(json.dumps(m.get("tool_calls") or []))
                                            for m in messages)
+        if last["role"] == "tool" and last.get("name") == "get_account":
+            follow = self._after_account(self._last_user_text(messages), last)
+            if follow:
+                return ModelResponse(tool_calls=[follow], input_tokens=input_size,
+                                     output_tokens=8, model=model)
         if last["role"] == "tool":
             text = self._answer_from_tool(last)
             return ModelResponse(text=text, input_tokens=input_size,
@@ -38,21 +42,65 @@ class MockProvider(Provider):
             return ModelResponse(tool_calls=[call], input_tokens=input_size,
                                  output_tokens=8, model=model)
         text = ("I can help with balances, fees, limits, currency conversion "
-                "and payment disputes. Please share your customer id.")
+                "and payment disputes. What would you like to do?")
         return ModelResponse(text=text, input_tokens=input_size,
                              output_tokens=_tokens(text), model=model)
 
+    @staticmethod
+    def _last_user_text(messages) -> str:
+        for m in reversed(messages):
+            if m["role"] == "user":
+                return str(m.get("content") or "")
+        return ""
+
+    @staticmethod
+    def _call(name, **arguments):
+        return {"id": uuid.uuid4().hex[:12], "name": name, "arguments": arguments}
+
+    @staticmethod
+    def _needs_customer(t: str) -> str | None:
+        if "human" in t or "escalate" in t:
+            return "escalate"
+        if "convert" in t or "fx" in t or "exchange" in t:
+            return "fx"
+        if "limit" in t:
+            return "limits"
+        return None
+
+    def _after_account(self, text: str, tool_msg: dict) -> dict | None:
+        try:
+            data = json.loads(tool_msg["content"])
+        except (KeyError, json.JSONDecodeError):
+            return None
+        if not isinstance(data, dict) or data.get("error") or not data.get("customer"):
+            return None
+        cid = data["customer"]["id"]
+        need = self._needs_customer(text.lower())
+        if need == "escalate":
+            return self._call("escalate_to_human", customer_id=cid,
+                              reason="customer asked for a human")
+        if need == "fx":
+            m = _ID_RE["amount"].search(text)
+            amount = float(m.group(1)) if m else 100.0
+            frm = m.group(2).upper() if m else "EUR"
+            to = "USD" if frm == "EUR" else "EUR"
+            m2 = re.search(r"\b(?:to|into)\s+([A-Z]{3})\b", text, re.I)
+            if m2:
+                to = m2.group(1).upper()
+            return self._call("quote_fx", customer_id=cid, amount=amount,
+                              from_currency=frm, to_currency=to)
+        if need == "limits":
+            return self._call("check_limits", customer_id=cid)
+        return None
+
     def _route(self, text: str) -> dict | None:
         t = text.lower()
-        cid = _ID_RE["customer"].search(text)
         acc = _ID_RE["account"].search(text)
         tx = _ID_RE["transaction"].search(text)
         reason = _ID_RE["reason"].search(text)
         email = _ID_RE["email"].search(text)
 
-        def call(name, **arguments):
-            return {"id": uuid.uuid4().hex[:12], "name": name,
-                    "arguments": arguments}
+        call = self._call
 
         if ("open" in t or "create" in t or "file" in t) and "dispute" in t and tx:
             return call("create_dispute", transaction_id=tx.group().upper(),
@@ -64,25 +112,12 @@ class MockProvider(Provider):
         if "statement" in t and acc and email:
             return call("send_statement", account_id=acc.group().upper(),
                         email=email.group())
-        if ("human" in t or "escalate" in t) and cid:
-            return call("escalate_to_human", customer_id=cid.group().upper(),
-                        reason="customer asked for a human")
-        if ("convert" in t or "fx" in t or "exchange" in t) and cid:
-            m = _ID_RE["amount"].search(text)
-            amount = float(m.group(1)) if m else 100.0
-            frm = m.group(2).upper() if m else "EUR"
-            to = "USD" if frm == "EUR" else "EUR"
-            m2 = re.search(r"\b(?:to|into)\s+([A-Z]{3})\b", text, re.I)
-            if m2:
-                to = m2.group(1).upper()
-            return call("quote_fx", customer_id=cid.group().upper(),
-                        amount=amount, from_currency=frm, to_currency=to)
-        if "limit" in t and cid:
-            return call("check_limits", customer_id=cid.group().upper())
+        if self._needs_customer(t):
+            return call("get_account")
         if ("transaction" in t or "history" in t) and acc:
             return call("get_transactions", account_id=acc.group().upper())
-        if ("balance" in t or "account" in t) and cid:
-            return call("get_account", customer_id=cid.group().upper())
+        if any(w in t for w in ("balance", "account", "баланс", "рахун")):
+            return call("get_account")
         if any(w in t for w in ("fee", "spread", "rule", "policy", "how", "what", "why")):
             return call("search_knowledge_base", query=text[:120])
         return None

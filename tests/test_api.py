@@ -13,7 +13,7 @@ def test_health():
 
 
 def test_chat_produces_answer_and_trace():
-    r = client.post("/chat", json={"message": "What is the balance for CUS-0001?"})
+    r = client.post("/chat", json={"message": "What is my balance?", "customer_id": "CUS-0001"})
     assert r.status_code == 200
     body = r.json()
     assert body["answer"]
@@ -26,7 +26,7 @@ def test_chat_produces_answer_and_trace():
 
 
 def test_chat_session_continuity():
-    r1 = client.post("/chat", json={"message": "Balance for CUS-0001?"})
+    r1 = client.post("/chat", json={"message": "What is my balance?", "customer_id": "CUS-0001"})
     sid = r1.json()["session_id"]
     r2 = client.post("/chat", json={"message": "Show transactions for ACC-1001",
                                     "session_id": sid})
@@ -35,7 +35,7 @@ def test_chat_session_continuity():
 
 
 def test_chat_returns_the_prompt_version_it_ran_with():
-    r = client.post("/chat", json={"message": "Balance for CUS-0001?"})
+    r = client.post("/chat", json={"message": "What is my balance?", "customer_id": "CUS-0001"})
     assert r.json()["prompt_version"] == "base.v1"
 
 
@@ -45,7 +45,7 @@ def test_compare_reports_the_conditions_of_each_arm():
     try:
         overlays = prompt.active_overlays()
         r = client.post("/api/_test/compare",
-                        json={"message": "I am CUS-0001. What is the fee for a SWIFT transfer?"})
+                        json={"message": "What is the fee for a SWIFT transfer?"})
         assert r.status_code == 200
         clean, prof = r.json()["clean"], r.json()["profile"]
         for arm in (clean, prof):
@@ -296,7 +296,7 @@ def test_ui_tells_what_each_send_button_does():
 def _compare_on(profile, message):
     client.put("/api/_test/profile", json={"profile": profile})
     try:
-        return client.post("/api/_test/compare", json={"message": message}).json()
+        return client.post("/api/_test/compare", json={"message": message, "customer_id": "CUS-0001"}).json()
     finally:
         client.put("/api/_test/profile", json={"profile": None})
 
@@ -310,7 +310,7 @@ def _explain_body(message, d):
 
 
 def test_explain_on_mock_summarises_the_facts_without_a_model():
-    message = "I am CUS-0001. What is the fee for a SWIFT transfer?"
+    message = "What is the fee for a SWIFT transfer?"
     d = _compare_on("lesson-04", message)
     r = client.post("/api/_test/compare/explain", json=_explain_body(message, d))
     assert r.status_code == 200
@@ -340,7 +340,7 @@ def test_explain_sends_both_answers_and_tool_diffs_to_the_light_model(monkeypatc
                                  input_tokens=11, output_tokens=7,
                                  model=self.model)
 
-    message = "I am CUS-0001. What is the fee for a SWIFT transfer?"
+    message = "What is the fee for a SWIFT transfer?"
     d = _compare_on("lesson-04", message)
     monkeypatch.setattr(explain, "get_provider", Recorder)
     monkeypatch.setattr(config, "EXPLAIN_MODEL", "light-model")
@@ -376,7 +376,7 @@ def test_explain_surfaces_a_model_failure_as_502(monkeypatch):
         def complete(self, system, messages, tools):
             raise RuntimeError("401 Unauthorized")
 
-    message = "Balance for CUS-0001?"
+    message = "What is my balance?"
     d = _compare_on("lesson-04", message)
     monkeypatch.setattr(explain, "get_provider", Broken)
     r = client.post("/api/_test/compare/explain", json=_explain_body(message, d))
@@ -460,12 +460,12 @@ def test_request_settings_isolate_the_profile_between_clients():
     assert a["profile"] == "lesson-01" and a["scope"] == "request"
     assert b["profile"] == "lesson-03"
     assert plain["profile"] == "clean" and plain["scope"] == "server"
-    ra = client.post("/chat", json={"message": "What is the balance for CUS-0001?"},
+    ra = client.post("/chat", json={"message": "What is my balance?", "customer_id": "CUS-0001"},
                      headers=_hdr(profile="lesson-01")).json()
     tree = client.get(f"/api/_test/traces/{ra['request_id']}").json()
     assert tree["attributes"]["run.profile"] == "lesson-01"
     assert ra["prompt_version"].startswith("base.v1+")
-    rb = client.post("/chat", json={"message": "What is the balance for CUS-0001?"}).json()
+    rb = client.post("/chat", json={"message": "What is my balance?", "customer_id": "CUS-0001"}).json()
     assert rb["prompt_version"] == "base.v1"
 
 
@@ -496,13 +496,13 @@ def test_compare_leaves_the_server_state_and_other_sessions_alone():
     """compare used to flip the global profile twice and wipe every session
     on the stand, so a student mid-dialogue lost their history whenever
     anyone else pressed the button."""
-    first = client.post("/chat", json={"message": "Balance for CUS-0001?",
+    first = client.post("/chat", json={"message": "What is my balance?", "customer_id": "CUS-0001",
                                        "session_id": "bystander"}).json()
     assert first["step_number"] == 1
     client.put("/api/_test/defects", json={"defects": "D26"})
     try:
         d = client.post("/api/_test/compare",
-                        json={"message": "What is the balance for CUS-0001?"},
+                        json={"message": "What is my balance?", "customer_id": "CUS-0001"},
                         headers=_hdr(profile="lesson-01")).json()
         assert d["clean"]["active_defects"] == []
         assert d["profile"]["profile"] == "lesson-01"
@@ -519,7 +519,7 @@ def test_compare_leaves_the_server_state_and_other_sessions_alone():
 
 def test_series_runs_fresh_sessions_and_counts_the_tools():
     r = client.post("/api/_test/series",
-                    json={"message": "What is the balance for CUS-0001?", "runs": 3,
+                    json={"message": "What is my balance?", "customer_id": "CUS-0001", "runs": 3,
                           "profile": "lesson-01"},
                     headers=_hdr(profile="clean"))
     assert r.status_code == 200, r.text
@@ -533,6 +533,7 @@ def test_series_runs_fresh_sessions_and_counts_the_tools():
     assert cur["tool_counts"] == {"get_account": 3}
     assert prof["prompt_version"] == "base.v1+D01+D02+D03"
     assert all("key" in x["facts"] for x in cur["runs"] + prof["runs"])
+    assert all(x["facts"]["outcome"] != "error" for x in cur["runs"] + prof["runs"])
     for arm in ("profile", "current"):
         assert sum(row["arms"][arm]["count"] for row in body["rows"]) == 3
     pinned = client.post("/api/_test/series",
@@ -645,7 +646,7 @@ def test_prompt_endpoint_follows_the_header_so_the_ui_can_diff_against_clean():
 
 
 def test_chat_usage_names_the_model_and_leaves_an_unknown_price_empty():
-    usage = client.post("/chat", json={"message": "Balance for CUS-0001?"}).json()["usage"]
+    usage = client.post("/chat", json={"message": "What is my balance?", "customer_id": "CUS-0001"}).json()["usage"]
     assert usage["model"] == "mock-1"
     assert usage["cost_usd"] is None
 
@@ -654,13 +655,13 @@ def test_series_and_compare_carry_the_cost(monkeypatch):
     from app.agent import pricing
     monkeypatch.setitem(pricing.PRICES_PER_MTOK_USD, "mock-1", (1.0, 5.0))
     series = client.post("/api/_test/series",
-                         json={"message": "Balance for CUS-0001?", "runs": 2}).json()
+                         json={"message": "What is my balance?", "customer_id": "CUS-0001", "runs": 2}).json()
     arm = series["arms"]["current"]
     per_run = [r["usage"]["cost_usd"] for r in arm["runs"]]
     assert all(c and c > 0 for c in per_run)
     assert arm["usage"]["cost_usd"] == round(sum(per_run), 6)
     compare = client.post("/api/_test/compare",
-                          json={"message": "Balance for CUS-0001?", "profile": "lesson-01"}).json()
+                          json={"message": "What is my balance?", "customer_id": "CUS-0001", "profile": "lesson-01"}).json()
     assert compare["clean"]["usage"]["cost_usd"] > 0
     assert compare["profile"]["usage"]["cost_usd"] > 0
 
@@ -693,8 +694,8 @@ def test_ukrainian_question_sends_the_reply_language_rule_without_touching_the_a
             return ModelResponse(text="ok", input_tokens=5, output_tokens=1, model=self.model)
 
     monkeypatch.setattr(loop, "get_provider", Recorder)
-    uk = client.post("/chat", json={"message": "Я CUS-0001. Який у мене баланс?"}).json()
-    en = client.post("/chat", json={"message": "I am CUS-0001. What is my balance?"}).json()
+    uk = client.post("/chat", json={"message": "Який у мене баланс?", "customer_id": "CUS-0001"}).json()
+    en = client.post("/chat", json={"message": "What is my balance?", "customer_id": "CUS-0001"}).json()
     assert language.UK_RULE in calls[0]
     assert language.UK_RULE not in calls[1]
     assert uk["prompt_version"] == en["prompt_version"] == "base.v1"

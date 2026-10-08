@@ -2,7 +2,7 @@
 import re
 from datetime import date
 
-from app import clock, db, defects
+from app import clock, db, defects, session_ctx
 from app.engines import disputes as disputes_engine
 from app.engines import fx as fx_engine
 from app.engines import limits as limits_engine
@@ -25,7 +25,13 @@ def _maybe_sanitize_row(row: dict) -> dict:
 
 
 
-def get_account(customer_id: str, account_id: str | None = None) -> dict:
+NO_CUSTOMER = "no customer is signed in for this session"
+
+
+def get_account(account_id: str | None = None) -> dict:
+    customer_id = session_ctx.current()
+    cust = db.one("SELECT id, name, tier FROM customers WHERE id = ?", (customer_id,))
+    customer = {"id": cust["id"], "name": cust["name"], "tier": cust["tier"]}
     accounts = db.rows(
         "SELECT a.*, c.tier, c.name AS holder FROM accounts a "
         "JOIN customers c ON c.id = a.customer_id WHERE a.customer_id = ?",
@@ -36,11 +42,11 @@ def get_account(customer_id: str, account_id: str | None = None) -> dict:
         if defects.is_on("D04") and len(accounts) > 1:
             others = [a for a in accounts if a["id"] != account_id]
             if others:
-                return {"accounts": [others[0]]}
+                return {"customer": customer, "accounts": [others[0]]}
         accounts = [a for a in accounts if a["id"] == account_id]
         if not accounts:
             return {"error": f"account {account_id} not found for {customer_id}"}
-    return {"accounts": accounts}
+    return {"customer": customer, "accounts": accounts}
 
 
 def get_transactions(account_id: str, limit: int = 20) -> dict:
@@ -183,14 +189,18 @@ def send_statement(account_id: str, email: str, period: str = "last_month") -> d
 def _schema(props: dict, required: list[str]) -> dict:
     return {"type": "object", "properties": props, "required": required}
 
+_SESSION_CUSTOMER = {"type": "string",
+                     "description": "The customer id returned by get_account"}
+
 TOOLS: dict[str, dict] = {
     "get_account": {
         "fn": get_account,
-        "description": "Get the customer's accounts: id, currency, balance, tier, holder name.",
+        "description": ("Get the customer signed in to this session (id, name, tier) and their "
+                        "accounts: id, currency, balance. Call it first to learn who you are "
+                        "serving: the customer_id other tools need comes from here."),
         "input_schema": _schema(
-            {"customer_id": {"type": "string", "description": "Customer id, e.g. CUS-0001"},
-             "account_id": {"type": "string", "description": "Optional: narrow to one account"}},
-            ["customer_id"])},
+            {"account_id": {"type": "string", "description": "Optional: narrow to one account"}},
+            [])},
     "get_transactions": {
         "fn": get_transactions,
         "description": "List recent transactions of one account, newest first.",
@@ -201,12 +211,12 @@ TOOLS: dict[str, dict] = {
     "check_limits": {
         "fn": check_limits,
         "description": "Current daily and monthly transfer limits and remainders for a customer (EUR equivalent).",
-        "input_schema": _schema({"customer_id": {"type": "string"}}, ["customer_id"])},
+        "input_schema": _schema({"customer_id": _SESSION_CUSTOMER}, ["customer_id"])},
     "quote_fx": {
         "fn": quote_fx,
         "description": "Full step-by-step FX quote: mid rate, tier spread, free allowance, final amount.",
         "input_schema": _schema(
-            {"customer_id": {"type": "string"},
+            {"customer_id": _SESSION_CUSTOMER,
              "amount": {"type": "number"},
              "from_currency": {"type": "string"},
              "to_currency": {"type": "string"}},
@@ -227,7 +237,7 @@ TOOLS: dict[str, dict] = {
         "fn": escalate_to_human,
         "description": "Escalate the conversation to a human support agent.",
         "input_schema": _schema(
-            {"customer_id": {"type": "string"}, "reason": {"type": "string"}},
+            {"customer_id": _SESSION_CUSTOMER, "reason": {"type": "string"}},
             ["customer_id", "reason"])},
     "create_dispute": {
         "fn": create_dispute,
@@ -276,9 +286,26 @@ def specs() -> list[dict]:
     return out
 
 
+def _session_check(name: str, arguments: dict) -> dict | None:
+    if name != "get_account" and "customer_id" not in TOOLS[name]["input_schema"]["properties"]:
+        return None
+    signed_in = session_ctx.current()
+    if signed_in is None:
+        return {"error": NO_CUSTOMER}
+    asked = arguments.get("customer_id")
+    if asked is not None and str(asked).upper() != signed_in:
+        return {"error": f"customer_id {asked} is not the customer of this session"}
+    return None
+
+
 def dispatch(name: str, arguments: dict) -> dict:
     if name not in TOOLS:
         return {"error": f"unknown tool {name!r}"}
+    refused = _session_check(name, arguments)
+    if refused:
+        return refused
+    if name == "get_account":
+        arguments = {k: v for k, v in arguments.items() if k != "customer_id"}
     try:
         return TOOLS[name]["fn"](**arguments)
     except TypeError as e:
