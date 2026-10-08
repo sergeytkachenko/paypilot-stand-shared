@@ -48,6 +48,12 @@ def _optional_float(name: str) -> float | None:
 
 LLM_TEMPERATURE = _optional_float("LLM_TEMPERATURE")
 EXPLAIN_MODEL = os.environ.get("EXPLAIN_MODEL", "")
+ROUTER = os.environ.get("ROUTER", "").strip().lower()
+ROUTER_PROFILES = {p.strip() for p in os.environ.get("ROUTER_PROFILES", "clean").split(",")
+                   if p.strip()}
+ROUTER_MIN_CONFIDENCE = _optional_float("ROUTER_MIN_CONFIDENCE") or 0.9
+TYPESAFE_API_KEY = os.environ.get("TYPESAFE_API_KEY", "")
+TYPESAFE_MODEL = os.environ.get("TYPESAFE_MODEL", "jev-latest")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 

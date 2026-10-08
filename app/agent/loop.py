@@ -3,7 +3,7 @@ import json
 import uuid
 
 from app import config, defects
-from app.agent import language, pricing, prompt, summarize, tools
+from app.agent import language, pricing, prompt, router, summarize, tools
 from app.agent.providers.base import get_provider
 from app.tracing import RequestTrace
 
@@ -75,6 +75,9 @@ def run_turn(session_id: str | None, user_message: str) -> dict:
     total_in = total_out = 0
     model = getattr(provider, "model", "")
     call_costs: list[float | None] = []
+    system, router_cost = _route(trace, state, system, user_message)
+    if router_cost is not None:
+        call_costs.append(router_cost)
 
     for step in range(config.MAX_AGENT_STEPS):
         with trace.span("llm.call", **{"agent.loop_step": step}) as s:
@@ -122,6 +125,28 @@ def run_turn(session_id: str | None, user_message: str) -> dict:
             "usage": {"input_tokens": total_in, "output_tokens": total_out,
                       "model": model,
                       "cost_usd": pricing.total_cost_usd(call_costs)}}
+
+
+def _route(trace: RequestTrace, state: dict, system: str,
+           user_message: str) -> tuple[str, float | None]:
+    if state["steps"] != 1 or not router.active_for(defects.current_profile()):
+        return system, None
+    jev = router.get_router()
+    if jev is None:
+        return system, None
+    with trace.span("router.jev") as s:
+        decision = jev.decide(user_message)
+        system, block = router.apply(system, decision)
+        s.attributes.update({
+            "router.model": decision.model,
+            "router.intent": decision.intent or "",
+            "router.confidence": round(decision.confidence, 3),
+            "router.action": decision.action,
+            "router.latency_ms": decision.latency_ms,
+            "router.added_instructions": block,
+            "router.error": decision.error,
+        })
+    return system, pricing.cost_usd(decision.model, decision.input_tokens, 0)
 
 
 def _execute_tool(trace: RequestTrace, tc: dict) -> dict:
