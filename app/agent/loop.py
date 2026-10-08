@@ -72,6 +72,7 @@ def run_turn(session_id: str | None, user_message: str) -> dict:
     answer = None
     total_in = total_out = 0
     model = getattr(provider, "model", "")
+    call_costs: list[float | None] = []
 
     for step in range(config.MAX_AGENT_STEPS):
         with trace.span("llm.call", **{"agent.loop_step": step}) as s:
@@ -85,6 +86,8 @@ def run_turn(session_id: str | None, user_message: str) -> dict:
         total_in += resp.input_tokens
         total_out += resp.output_tokens
         model = resp.model or model
+        call_costs.append(pricing.cost_usd(resp.model or model, resp.input_tokens,
+                                           resp.output_tokens))
 
         if not resp.tool_calls:
             answer = resp.text or ""
@@ -116,7 +119,7 @@ def run_turn(session_id: str | None, user_message: str) -> dict:
             "elapsed_ms": tree.get("duration_ms"),
             "usage": {"input_tokens": total_in, "output_tokens": total_out,
                       "model": model,
-                      "cost_usd": pricing.cost_usd(model, total_in, total_out)}}
+                      "cost_usd": pricing.total_cost_usd(call_costs)}}
 
 
 def _execute_tool(trace: RequestTrace, tc: dict) -> dict:
