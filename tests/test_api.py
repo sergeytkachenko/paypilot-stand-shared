@@ -642,7 +642,7 @@ def test_series_and_compare_carry_the_cost(monkeypatch):
 def test_ui_diffs_the_prompt_against_clean_and_prices_every_run():
     ui = _ui()
     for marker in ("function showPrompt", "function lineDiff",
-                   "{profile: 'clean', defects: ''}", "if(promptMode) showPrompt(promptMode);",
+                   "{profile: 'clean', defects: ''}", "if(promptMode) showPrompt(promptMode);", "ticket !== promptRequest",
                    "_test/reference", "function loadReference", "function costPart",
                    "addSpend(u.cost_usd)", "addSpend(arm.usage.cost_usd)",
                    "addSpend(side.usage.cost_usd)", "один хід без історії",

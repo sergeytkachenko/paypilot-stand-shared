@@ -1154,7 +1154,7 @@ async function setAdmin(){
   refreshState();
 }
 
-let promptMode = null;
+let promptMode = null, promptRequest = 0;
 
 function cleanSettingsHeader(){
   const next = Object.assign({}, settings, {profile: 'clean', defects: ''});
@@ -1197,12 +1197,13 @@ async function showPrompt(mode){
     $('pm' + m.charAt(0).toUpperCase() + m.slice(1)).classList.toggle('sel', m === mode);
   });
   const box = $('promptBox');
+  const ticket = ++promptRequest;
   if(!mode){ box.style.display = 'none'; $('promptMeta').textContent = ''; return; }
   try{
     const pair = await Promise.all([
       api('/api/_test/prompt'),
       api('/api/_test/prompt', {headers: cleanSettingsHeader()})]);
-    if(promptMode !== mode) return;
+    if(ticket !== promptRequest) return;
     const mine = pair[0], clean = pair[1];
     const diff = lineDiff(clean.text.split('\n'), mine.text.split('\n'));
     const added = diff.filter(function(l){ return l.op === 'add'; }).length;
