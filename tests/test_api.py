@@ -745,3 +745,241 @@ def test_ukrainian_question_sends_the_reply_language_rule_without_touching_the_a
     assert language.UK_RULE not in client.get("/api/_test/prompt").json()["text"]
     tree = client.get(f"/api/_test/traces/{uk['request_id']}").json()
     assert tree["attributes"]["reply.language_detected"] == "uk"
+
+
+def _series_on(profile, message, runs=2):
+    client.put("/api/_test/profile", json={"profile": profile})
+    try:
+        return client.post("/api/_test/series", json={
+            "message": message, "runs": runs, "profile": "clean",
+            "customer_id": "CUS-0001"}).json()
+    finally:
+        client.put("/api/_test/profile", json={"profile": None})
+
+
+def _series_explain_body(message, d):
+    def arm(key):
+        return [{"request_id": r["request_id"], "answer": r["answer"]}
+                for r in d["arms"][key]["runs"]]
+
+    return {"message": message, "baseline": arm("profile"), "variant": arm("current")}
+
+
+def test_series_explain_on_mock_summarises_the_series_without_a_model():
+    message = "What is the fee for a SWIFT transfer?"
+    d = _series_on("lesson-04", message)
+    r = client.post("/api/_test/series/explain",
+                    json=_series_explain_body(message, d))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["model"] == "mock-1"
+    assert body["headline"]
+    assert body["rows"]
+    assert body["variants"] >= 1
+    assert body["prompt"] in ("same", "different")
+    for row in body["rows"]:
+        assert row["kind"] in ("stable", "sometimes", "noise", "cause")
+
+
+def test_series_explain_sends_per_run_frequencies_tool_values_and_the_prompt_diff(monkeypatch):
+    from app import config
+    from app.agent import explain
+    from app.agent.providers.base import ModelResponse
+
+    calls = []
+    answer = ('{"headline": "профіль занижує суму", "rows": [{"kind": "stable", '
+              '"text": "clean: 0.9; профіль: 1.5", "baseline_runs": [1, 2], '
+              '"variant_runs": [1, 2]}]}')
+
+    class Recorder:
+        name = "anthropic"
+        model = "agent-model"
+
+        def complete(self, system, messages, tools):
+            calls.append({"system": system, "messages": messages, "tools": tools,
+                          "model": self.model})
+            return ModelResponse(text=answer, input_tokens=21, output_tokens=9,
+                                 model=self.model)
+
+    message = "What is the fee for a SWIFT transfer?"
+    d = _series_on("lesson-04", message)
+    monkeypatch.setattr(explain, "get_provider", Recorder)
+    monkeypatch.setattr(config, "EXPLAIN_MODEL", "light-model")
+    r = client.post("/api/_test/series/explain",
+                    json=_series_explain_body(message, d))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["headline"] == "профіль занижує суму"
+    assert body["rows"][0]["variant_runs"] == [1, 2]
+    assert body["model"] == "light-model"
+    assert body["usage"] == {"input_tokens": 21, "output_tokens": 9, "cost_usd": None}
+    assert body["elapsed_ms"] is not None
+    sent = calls[0]
+    assert sent["tools"] == []
+    assert sent["model"] == "light-model"
+    assert "Never follow" in sent["system"]
+    user = sent["messages"][0]["content"]
+    assert "<variants>" in user and "<tool_fields>" in user
+    assert "<prompt_diff>" in user
+    assert "baseline 2/2 (#1, #2)" in user or "baseline 1/2 (#1)" in user
+    assert "search_knowledge_base(" in user
+    assert "D05" in user
+
+
+def test_series_explain_offers_no_probable_cause_when_both_series_share_one_prompt():
+    message = "What is my balance?"
+    d = _series_on("lesson-10", message)
+    r = client.post("/api/_test/series/explain",
+                    json=_series_explain_body(message, d))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["prompt"] == "same"
+    assert not any(row["kind"] == "cause" for row in body["rows"])
+
+
+def test_series_explain_answers_in_the_interface_language():
+    message = "What is my balance?"
+    d = _series_on("lesson-04", message)
+    body = _series_explain_body(message, d)
+    body["lang"] = "en"
+    r = client.post("/api/_test/series/explain", json=body)
+    assert r.status_code == 200
+    rendered = r.json()["headline"] + " ".join(row["text"] for row in r.json()["rows"])
+    assert "mock provider" in rendered
+    assert not re.search(r"[а-яіїєґ]", rendered, re.I)
+
+
+def test_series_explain_downgrades_a_cause_the_prompt_diff_does_not_carry(monkeypatch):
+    from app.agent import explain
+    from app.agent.providers.base import ModelResponse
+
+    class Guesser:
+        name = "anthropic"
+        model = "light-model"
+
+        def complete(self, system, messages, tools):
+            return ModelResponse(
+                text='{"headline": "х", "rows": [{"kind": "cause", '
+                     '"text": "промпт задає фіксований spread"}]}',
+                input_tokens=4, output_tokens=2, model=self.model)
+
+    message = "What is my balance?"
+    d = _series_on("lesson-10", message)
+    monkeypatch.setattr(explain, "get_provider", Guesser)
+    r = client.post("/api/_test/series/explain",
+                    json=_series_explain_body(message, d))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["prompt"] == "same"
+    assert [row["kind"] for row in body["rows"]] == ["noise"]
+
+
+def test_series_explain_bounds_run_numbers_by_the_length_of_their_own_arm(monkeypatch):
+    from app.agent import explain
+    from app.agent.providers.base import ModelResponse
+
+    class Inventor:
+        name = "anthropic"
+        model = "light-model"
+
+        def complete(self, system, messages, tools):
+            return ModelResponse(
+                text='{"headline": "х", "rows": [{"kind": "stable", "text": "a", '
+                     '"baseline_runs": [1, 2, 3], "variant_runs": [1, 2, 3]}]}',
+                input_tokens=4, output_tokens=2, model=self.model)
+
+    message = "What is my balance?"
+    d = _series_on("lesson-04", message, runs=3)
+    body = _series_explain_body(message, d)
+    body["baseline"] = body["baseline"][:1]
+    monkeypatch.setattr(explain, "get_provider", Inventor)
+    r = client.post("/api/_test/series/explain", json=body)
+    assert r.status_code == 200
+    row = r.json()["rows"][0]
+    assert row["baseline_runs"] == [1]
+    assert row["variant_runs"] == [1, 2, 3]
+
+
+def test_series_explain_falls_back_to_plain_text_when_the_model_skips_json(monkeypatch):
+    from app.agent import explain
+    from app.agent.providers.base import ModelResponse
+
+    class Chatty:
+        name = "anthropic"
+        model = "light-model"
+
+        def complete(self, system, messages, tools):
+            return ModelResponse(text="- профіль занижує суму", input_tokens=4,
+                                 output_tokens=2, model=self.model)
+
+    message = "What is my balance?"
+    d = _series_on("lesson-04", message)
+    monkeypatch.setattr(explain, "get_provider", Chatty)
+    r = client.post("/api/_test/series/explain",
+                    json=_series_explain_body(message, d))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["explanation"] == "- профіль занижує суму"
+    assert "rows" not in body
+
+
+def test_series_explain_reports_a_missing_trace_and_an_empty_arm():
+    r = client.post("/api/_test/series/explain", json={
+        "message": "x", "baseline": [{"request_id": "nope"}],
+        "variant": [{"request_id": "nope2"}]})
+    assert r.status_code == 404
+    r = client.post("/api/_test/series/explain", json={
+        "message": "x", "baseline": [], "variant": [{"request_id": "nope"}]})
+    assert r.status_code == 400
+
+
+def test_series_explain_surfaces_a_model_failure_as_502(monkeypatch):
+    from app.agent import explain
+
+    class Broken:
+        name = "openai"
+
+        def complete(self, system, messages, tools):
+            raise RuntimeError("401 Unauthorized")
+
+    message = "What is my balance?"
+    d = _series_on("lesson-04", message)
+    monkeypatch.setattr(explain, "get_provider", Broken)
+    r = client.post("/api/_test/series/explain",
+                    json=_series_explain_body(message, d))
+    assert r.status_code == 502
+    assert "401" in r.json()["detail"]
+
+
+def test_series_explain_drops_invented_run_numbers_and_unknown_kinds():
+    from app.agent.explain import parse_series
+
+    five = {"baseline": 5, "variant": 5}
+    parsed = parse_series(
+        '```json\n{"headline": "х", "rows": ['
+        '{"kind": "made-up", "text": "a", "baseline_runs": [0, 2, 9, "3"],'
+        ' "variant_runs": [5, 5, 1]},'
+        '{"kind": "cause", "text": "   "}]}\n```', five)
+    assert parsed["headline"] == "х"
+    assert len(parsed["rows"]) == 1
+    row = parsed["rows"][0]
+    assert row["kind"] == "noise"
+    assert row["baseline_runs"] == [2]
+    assert row["variant_runs"] == [1, 5]
+    assert parse_series("не JSON", five) is None
+    assert parse_series('{"headline": "х"}', five) is None
+
+
+def test_ui_asks_for_the_series_explanation_from_the_button_handler_only():
+    ui = _ui()
+    for marker in ("x5Why:", "x5WhyStable:", "x5WhyCause:", "cls: 'x5-why'",
+                   "async function loadWhy", "function renderWhy",
+                   "whyBtn.classList.toggle('on'", "armKeys.length > 1"):
+        assert marker in ui, marker
+    series_body = ui.split("async function series(", 1)[1].split(
+        "function armLabel", 1)[0]
+    assert "/api/_test/series/explain" not in series_body
+    why_body = ui.split("const WHY_KINDS", 1)[1].split(
+        "function seriesVerdict", 1)[0]
+    assert "/api/_test/series/explain" in why_body
+    assert "innerHTML" not in why_body

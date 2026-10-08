@@ -236,6 +236,38 @@ def test_compare_explain(body: ExplainIn):
         raise HTTPException(502, f"explain model failed: {e}")
 
 
+class SeriesExplainIn(BaseModel):
+    message: str
+    baseline: list[ExplainArm]
+    variant: list[ExplainArm]
+    lang: Literal["uk", "en"] = "uk"
+
+
+@app.post("/api/_test/series/explain")
+def test_series_explain(body: SeriesExplainIn):
+    ""
+    arms = {}
+    for label, runs in (("baseline", body.baseline), ("variant", body.variant)):
+        if not runs:
+            raise HTTPException(400, f"{label}: at least one run is required")
+        if len(runs) > SERIES_MAX_RUNS:
+            raise HTTPException(
+                400, f"{label}: at most {SERIES_MAX_RUNS} runs, got {len(runs)}")
+        collected = []
+        for run in runs:
+            tree = tracing.get(run.request_id)
+            if tree is None:
+                raise HTTPException(
+                    404, f"trace {run.request_id} not found ({label})")
+            collected.append({"tree": tree, "answer": run.answer})
+        arms[label] = collected
+    facts = explain.series_facts(body.message, arms)
+    try:
+        return explain.explain_series(facts, body.lang)
+    except Exception as e:
+        raise HTTPException(502, f"explain model failed: {e}")
+
+
 @app.get("/health")
 def health(request: Request):
     return {"status": "ok", "profile": defects.current_profile(),
