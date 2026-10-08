@@ -274,6 +274,15 @@ def test_ui_guards_an_identical_pair_by_active_defects_not_by_profile_name():
     assert "activeCount = d.active.length;" in ui
 
 
+def test_ui_series_card_numbers_runs_and_marks_tools_not_called_every_time():
+    ui = _ui()
+    assert "el('span', {text: String(i + 1)})" in ui
+    assert "arm.tool_counts[name] < n" in ui
+    assert "partial.indexOf(name) >= 0 ? el('b', {text: name})" in ui
+    for key in ("x5Variants", "x5ToolsH", "x5RunsAria", "x5ColTrace"):
+        assert ui.count(key + ": '") == 2
+
+
 def test_ui_tells_what_each_send_button_does():
     ui = _ui()
     assert "function renderComposerHint" in ui
