@@ -22,3 +22,9 @@ def test_total_is_empty_when_any_part_is_unknown():
     assert pricing.total_cost_usd([0.001, 0.002]) == 0.003
     assert pricing.total_cost_usd([0.001, None]) is None
     assert pricing.total_cost_usd([]) is None
+
+
+def test_haiku_55_short_and_long_prompt_tiers():
+    assert pricing.cost_usd("claude-haiku-5-5", 5266, 110) == 0.000582
+    assert pricing.cost_usd("claude-haiku-5-5", 100_000, 0) == 0.01
+    assert pricing.cost_usd("claude-haiku-5-5", 100_001, 1000) == round((100_001 * 0.5 + 1000 * 2.5) / 1_000_000, 6)
