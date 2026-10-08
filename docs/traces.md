@@ -40,6 +40,7 @@ agent.request                     ← корінь, один на хід діа�
 | Атрибут | Значення |
 |---|---|
 | `session.id` | ідентифікатор сесії |
+| `session.customer_id` | клієнт, що увійшов у сесію (`customer_id` запиту); порожньо — клієнта немає |
 | `dialog.step_number` | номер репліки в діалозі — щоб вибрати спани конкретного кроку |
 | `run.profile` | активний профіль на момент ходу |
 | `run.active_defects` | список активних дефектів |
@@ -86,8 +87,8 @@ agent.request                     ← корінь, один на хід діа�
 import httpx
 
 r = httpx.post("http://localhost:8000/chat",
-               json={"session_id": "demo",
-                     "message": "I am CUS-0004. Open a dispute for TX-0401, duplicate charge"})
+               json={"session_id": "demo", "customer_id": "CUS-0004",
+                     "message": "Open a dispute for TX-0401, duplicate charge"})
 rid = r.json()["request_id"]
 tree = httpx.get(f"http://localhost:8000/api/_test/traces/{rid}").json()
 

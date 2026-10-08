@@ -61,16 +61,31 @@ def chat_ui():
 class ChatIn(BaseModel):
     message: str
     session_id: str | None = None
+    customer_id: str | None = None
+
+
+def _signed_in(customer_id: str | None) -> str | None:
+    if not customer_id:
+        return None
+    cid = customer_id.strip().upper()
+    if not db.one("SELECT id FROM customers WHERE id = ?", (cid,)):
+        raise HTTPException(400, f"Unknown customer {customer_id!r}")
+    return cid
 
 
 @app.post("/chat")
 def chat(body: ChatIn):
-    return loop.run_turn(body.session_id, body.message)
+    customer = _signed_in(body.customer_id)
+    try:
+        return loop.run_turn(body.session_id, body.message, customer)
+    except loop.SessionCustomerConflict as e:
+        raise HTTPException(409, str(e))
 
 
 class CompareIn(BaseModel):
     message: str
     profile: str | None = None
+    customer_id: str | None = None
 
 
 def _arm_conditions() -> dict:
@@ -98,9 +113,9 @@ def _tools_called(request_id: str) -> list[str]:
             if c.get("name", "").startswith("tool.")]
 
 
-def _fresh_run(message: str) -> dict:
+def _fresh_run(message: str, customer_id: str | None) -> dict:
     conditions = _arm_conditions()
-    res = loop.run_turn(None, message)
+    res = loop.run_turn(None, message, customer_id)
     calls = answers.tool_calls(res["request_id"])
     return {
         "profile": defects.current_profile(),
@@ -122,6 +137,7 @@ def _fresh_run(message: str) -> dict:
 @app.post("/api/_test/compare")
 def test_compare(body: CompareIn):
     ""
+    customer = _signed_in(body.customer_id)
     target = body.profile or defects.current_profile()
     if target not in defects.PROFILES:
         raise HTTPException(400, f"Unknown profile {target!r}. "
@@ -131,7 +147,7 @@ def test_compare(body: CompareIn):
     for label, prof, arm_extra in (("clean", "clean", ""),
                                    ("profile", target, extra)):
         with runctx.override(profile=prof, defects=arm_extra):
-            out[label] = _fresh_run(body.message)
+            out[label] = _fresh_run(body.message, customer)
     return out
 
 
@@ -139,14 +155,15 @@ class SeriesIn(BaseModel):
     message: str
     runs: int = 5
     profile: str | None = None
+    customer_id: str | None = None
 
 
 SERIES_MAX_RUNS = 5
 _series_slots = threading.BoundedSemaphore(2)
 
 
-def _series_arm(message: str, runs: int) -> dict:
-    results = [_fresh_run(message) for _ in range(runs)]
+def _series_arm(message: str, runs: int, customer_id: str | None) -> dict:
+    results = [_fresh_run(message, customer_id) for _ in range(runs)]
     counts: dict[str, int] = {}
     for r in results:
         for name in set(r["tools_called"]):
@@ -170,6 +187,7 @@ def _series_arm(message: str, runs: int) -> dict:
 def test_series(body: SeriesIn):
     ""
     runs = max(1, min(body.runs, SERIES_MAX_RUNS))
+    customer = _signed_in(body.customer_id)
     if body.profile is not None and body.profile not in defects.PROFILES:
         raise HTTPException(400, f"Unknown profile {body.profile!r}. "
                                  f"Known: {sorted(defects.PROFILES)}")
@@ -178,10 +196,10 @@ def test_series(body: SeriesIn):
                                  "вони завершаться, і натисніть ще раз")
     try:
         out = {"runs": runs, "scope": "request", "arms": {}}
-        out["arms"]["current"] = _series_arm(body.message, runs)
+        out["arms"]["current"] = _series_arm(body.message, runs, customer)
         if body.profile is not None:
             with runctx.override(profile=body.profile, defects=""):
-                out["arms"]["profile"] = _series_arm(body.message, runs)
+                out["arms"]["profile"] = _series_arm(body.message, runs, customer)
         order = ["profile", "current"] if "profile" in out["arms"] else ["current"]
         out["rows"] = answers.group({a: out["arms"][a]["runs"] for a in order})
         return out

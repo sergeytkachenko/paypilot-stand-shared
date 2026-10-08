@@ -599,7 +599,7 @@ const I18N = {
     },
     pdescLesson: 'Профіль заняття L{n}.', pdescOther: 'Профіль стенду.',
     asShort: 'як', asCustomer: 'Як клієнт', noCustomer: 'без клієнта',
-    prefixNote: 'додає на початок «I am CUS-000X.» — інакше агент не знає, хто ви',
+    prefixNote: 'вхід клієнта для сесії: агент дізнається, хто ви, через get_account; зміна клієнта починає нову сесію',
     custTip: 'Від імені якого клієнта питаємо. Додається до питання автоматично.',
     inputPh: 'Питання англійською…', inputPhNext: 'Наступне питання…',
     compare: 'Порівняти', compareCap: 'один хід без історії, поруч: clean і {p}',
@@ -721,7 +721,7 @@ const I18N = {
     },
     pdescLesson: 'Lesson profile L{n}.', pdescOther: 'Stand profile.',
     asShort: 'as', asCustomer: 'As customer', noCustomer: 'no customer',
-    prefixNote: 'prepends “I am CUS-000X.” — otherwise the agent doesn’t know who you are',
+    prefixNote: 'signs the customer in for the session: the agent learns who you are via get_account; switching starts a new session',
     custTip: 'Which customer is asking. Added to the question automatically.',
     inputPh: 'Question in English…', inputPhNext: 'Next question…',
     compare: 'Compare', compareCap: 'one turn, no history, side by side: clean and {p}',
@@ -827,7 +827,7 @@ const I18N = {
 };
 
 const $ = function(id){ return document.getElementById(id); };
-let sessionId = null, lastTrace = null, lastStep = 0, currentProfile = '—';
+let sessionId = null, lastTrace = null, lastStep = 0, currentProfile = '—', customerEpoch = 0;
 let extraDefects = new Set(), profileDefects = new Set(), defectDetails = {};
 let standLocked = false, isAdmin = false, health = null, knownProfiles = [];
 let customers = [], accountsOf = {}, reference = null, standClock = '';
@@ -998,10 +998,12 @@ function legacyCopy(text){
 }
 
 function composeMessage(text){
-  const cust = ui.customer;
-  if(!cust || /CUS-\d{4}/i.test(text)) return {message: text, cust: ''};
-  const prefix = /[а-яіїєґё]/i.test(text) ? 'Я ' + cust + '. ' : 'I am ' + cust + '. ';
-  return {message: prefix + text, cust: cust};
+  return {message: text, cust: ui.customer || ''};
+}
+
+function withCustomer(body){
+  if(ui.customer) body.customer_id = ui.customer;
+  return body;
 }
 
 function startWaiting(bubble, controller){
@@ -1078,9 +1080,12 @@ async function send(retryText){
   const controller = new AbortController();
   const stopWaiting = startWaiting(thinking, controller);
   try{
-    const res = await api('/chat', Object.assign(jpost({message: composed.message, session_id: sessionId}), {signal: controller.signal}));
-    sessionId = res.session_id;
-    lastStep = res.step_number;
+    const epoch = customerEpoch;
+    const res = await api('/chat', Object.assign(jpost(withCustomer({message: composed.message, session_id: sessionId})), {signal: controller.signal}));
+    if(epoch === customerEpoch){
+      sessionId = res.session_id;
+      lastStep = res.step_number;
+    }
     stopWaiting();
     thinking.textContent = '';
     renderRich(res.answer || t('emptyAnswer'), thinking);
@@ -1451,7 +1456,7 @@ async function series(question){
   holder.appendChild(waitLine);
   appendNode(holder);
   try{
-    const body = {message: composed.message, runs: SERIES_RUNS};
+    const body = withCustomer({message: composed.message, runs: SERIES_RUNS});
     if(!onBaseline()) body.profile = 'clean';
     const d = await api('/api/_test/series', jpost(body));
     holder.textContent = '';
@@ -1549,7 +1554,7 @@ async function compare(retryText){
   holder.appendChild(el('div', {cls: 'card-head'}, [el('span', {cls: 'dots'}, [el('i'), el('i'), el('i')]), el('span', {cls: 'muted', text: t('comparing')})]));
   appendNode(holder);
   try{
-    const d = await api('/api/_test/compare', jpost({message:text}));
+    const d = await api('/api/_test/compare', jpost(withCustomer({message: text})));
     holder.textContent = '';
     holder.setAttribute('aria-label', d.clean.profile + ' ↔ ' + d.profile.profile);
     const rightName = d.profile.profile + (d.profile.active_defects.length && extraDefects.size ? ' + ' + Array.from(extraDefects).join(',') : '');
@@ -2263,9 +2268,12 @@ function renderCustomers(){
 }
 
 function pickCustomer(id){
+  const switched = ui.customer !== id;
+  if(switched){ sessionId = null; lastStep = 0; customerEpoch += 1; }
   ui.customer = id;
   saveUi();
   renderCustomers();
+  if(switched) renderComposerHint();
   closePops();
   $('inp').focus();
 }

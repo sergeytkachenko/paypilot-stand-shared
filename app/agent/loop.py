@@ -2,7 +2,7 @@
 import json
 import uuid
 
-from app import config, defects
+from app import config, defects, session_ctx
 from app.agent import language, pricing, prompt, router, summarize, tools
 from app.agent.providers.base import get_provider
 from app.tracing import RequestTrace
@@ -46,8 +46,24 @@ def _messages_for_model(state: dict) -> list[dict]:
     return messages
 
 
-def run_turn(session_id: str | None, user_message: str) -> dict:
+class SessionCustomerConflict(Exception):
+    def __init__(self, bound: str):
+        super().__init__(f"session belongs to {bound}; start a new session")
+        self.bound = bound
+
+
+def run_turn(session_id: str | None, user_message: str,
+             customer_id: str | None = None) -> dict:
     sid, state = _session(session_id)
+    if state["steps"] == 0:
+        state["customer_id"] = customer_id
+    elif customer_id and customer_id != state.get("customer_id"):
+        raise SessionCustomerConflict(state.get("customer_id") or "no customer")
+    with session_ctx.bind(state.get("customer_id")):
+        return _run_turn(sid, state, user_message)
+
+
+def _run_turn(sid: str, state: dict, user_message: str) -> dict:
     state["steps"] += 1
     trace = RequestTrace(sid, state["steps"])
     provider = get_provider()
@@ -56,6 +72,7 @@ def run_turn(session_id: str | None, user_message: str) -> dict:
     trace.root.attributes["prompt.version"] = prompt_version
     trace.root.attributes["reply.language_detected"] = reply_language or ""
     trace.root.attributes["llm.provider"] = provider.name
+    trace.root.attributes["session.customer_id"] = session_ctx.current() or ""
     trace.root.attributes["context.replay_active"] = (
         defects.is_on("D15") and any(m["role"] == "tool" for m in state["messages"]))
 
