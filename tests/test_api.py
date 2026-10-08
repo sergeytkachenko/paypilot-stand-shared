@@ -137,7 +137,7 @@ def test_ui_survives_a_narrow_screen():
     assert "min(760px, 100%)" in ui
     assert "flex-wrap:wrap}" in ui
     media_at = ui.index("@media (max-width: 820px)")
-    base_at = ui.index(".side{width:400px")
+    base_at = ui.index(".cmp-cols{display:grid")
     assert media_at > base_at, \
         "the media query must come after the base rule or source order defeats it"
 
@@ -255,13 +255,23 @@ def test_ui_keeps_settings_in_the_browser_and_sends_them_as_a_header():
     for fn in ("setProfile", "toggleDefect", "setClock", "setSummarize", "setRetrieval"):
         body = ui.split("async function " + fn)[1].split("\n}\n")[0]
         assert "jput(" not in body, f"{fn} still writes server-wide state"
-    assert "function series" in ui and 'id="serBtn"' in ui
+    assert "function series" in ui and "series(text)" in ui
     assert "retrieval.fragments" in ui
     assert "resetBtn" in ui and "adminRow" in ui
     for fn in ("setProfile", "toggleDefect", "setClock", "setSummarize", "setRetrieval"):
         body = ui.split("async function " + fn)[1].split("\n}\n")[0]
         assert "applySettings(" in body, f"{fn} must let the server validate before saving"
     assert "function recoverSettings" in ui
+
+
+def test_ui_never_parses_html_anywhere():
+    assert "innerHTML" not in _ui()
+
+
+def test_ui_guards_an_identical_pair_by_active_defects_not_by_profile_name():
+    ui = _ui()
+    assert "function onBaseline(){ return activeCount === 0; }" in ui
+    assert "activeCount = d.active.length;" in ui
 
 
 def test_ui_tells_what_each_send_button_does():
@@ -412,7 +422,7 @@ def test_openai_provider_omits_an_empty_tool_list(monkeypatch):
 def test_ui_explains_the_comparison_without_parsing_model_html():
     ui = _ui()
     assert "/api/_test/compare/explain" in ui
-    body = ui.split("async function showExplanation")[1].split("// Collect tool spans")[0]
+    body = ui.split("async function showExplanation")[1].split("function toolIndex")[0]
     assert "renderRich" in body
     assert "innerHTML" not in body
 
