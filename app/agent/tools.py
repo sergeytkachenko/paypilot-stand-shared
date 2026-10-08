@@ -286,8 +286,17 @@ def specs() -> list[dict]:
     return out
 
 
+_OWNER_OF = {
+    "account_id": "SELECT customer_id FROM accounts WHERE id = ?",
+    "transaction_id": ("SELECT a.customer_id FROM transactions t "
+                       "JOIN accounts a ON a.id = t.account_id WHERE t.id = ?"),
+}
+
+
 def _session_check(name: str, arguments: dict) -> dict | None:
-    if name != "get_account" and "customer_id" not in TOOLS[name]["input_schema"]["properties"]:
+    params = TOOLS[name]["input_schema"]["properties"]
+    owned = [] if name == "get_account" else [f for f in _OWNER_OF if f in params]
+    if name != "get_account" and "customer_id" not in params and not owned:
         return None
     signed_in = session_ctx.current()
     if signed_in is None:
@@ -295,6 +304,11 @@ def _session_check(name: str, arguments: dict) -> dict | None:
     asked = arguments.get("customer_id")
     if asked is not None and str(asked).upper() != signed_in:
         return {"error": f"customer_id {asked} is not the customer of this session"}
+    for field in owned:
+        value = arguments.get(field)
+        owner = db.one(_OWNER_OF[field], (value,)) if value else None
+        if owner and owner["customer_id"] != signed_in:
+            return {"error": f"{field} {value} does not belong to the customer of this session"}
     return None
 
 

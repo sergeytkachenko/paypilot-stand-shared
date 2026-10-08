@@ -67,6 +67,28 @@ def test_the_session_customer_is_fixed_on_the_first_turn():
     assert other.status_code == 409
 
 
+def test_an_anonymous_session_cannot_be_claimed_later():
+    first = client.post("/chat", json={"message": "hello"}).json()
+    later = client.post("/chat", json={"message": "What is my balance?", "session_id": first["session_id"],
+                                       "customer_id": "CUS-0001"})
+    assert later.status_code == 409
+
+
+def test_account_and_transaction_tools_serve_only_the_session_customer():
+    with session_ctx.bind("CUS-0001"):
+        own = tools.dispatch("get_transactions", {"account_id": "ACC-1001"})
+        other = tools.dispatch("get_transactions", {"account_id": "ACC-1006"})
+        dispute = tools.dispatch("check_dispute_eligibility", {"transaction_id": "TX-0401",
+                                                               "reason_code": "duplicate_charge"})
+        statement = tools.dispatch("send_statement", {"account_id": "ACC-1006", "email": "x@example.com"})
+    assert "transactions" in own
+    assert other == {"error": "account_id ACC-1006 does not belong to the customer of this session"}
+    assert dispute["error"].startswith("transaction_id TX-0401 does not belong")
+    assert statement["error"].startswith("account_id ACC-1006 does not belong")
+    assert tools.dispatch("get_transactions", {"account_id": "ACC-1001"}) == {"error": NO_CUSTOMER}
+    assert "fragments" in tools.dispatch("search_knowledge_base", {"query": "SWIFT fee"})
+
+
 def test_unknown_customer_is_rejected():
     for path in ("/chat", "/api/_test/compare", "/api/_test/series"):
         r = client.post(path, json={"message": "hi", "customer_id": "CUS-9999", "runs": 1})

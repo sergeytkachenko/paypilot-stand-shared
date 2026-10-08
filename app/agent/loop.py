@@ -55,11 +55,10 @@ class SessionCustomerConflict(Exception):
 def run_turn(session_id: str | None, user_message: str,
              customer_id: str | None = None) -> dict:
     sid, state = _session(session_id)
-    bound = state.get("customer_id")
-    if customer_id and bound and customer_id != bound:
-        raise SessionCustomerConflict(bound)
-    if customer_id and not bound:
+    if state["steps"] == 0:
         state["customer_id"] = customer_id
+    elif customer_id and customer_id != state.get("customer_id"):
+        raise SessionCustomerConflict(state.get("customer_id") or "no customer")
     with session_ctx.bind(state.get("customer_id")):
         return _run_turn(sid, state, user_message)
 

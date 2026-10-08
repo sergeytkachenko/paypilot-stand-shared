@@ -1081,8 +1081,10 @@ async function send(retryText){
   const stopWaiting = startWaiting(thinking, controller);
   try{
     const res = await api('/chat', Object.assign(jpost(withCustomer({message: composed.message, session_id: sessionId})), {signal: controller.signal}));
-    sessionId = res.session_id;
-    lastStep = res.step_number;
+    if((ui.customer || '') === composed.cust){
+      sessionId = res.session_id;
+      lastStep = res.step_number;
+    }
     stopWaiting();
     thinking.textContent = '';
     renderRich(res.answer || t('emptyAnswer'), thinking);
