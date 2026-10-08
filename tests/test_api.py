@@ -274,14 +274,17 @@ def test_ui_guards_an_identical_pair_by_active_defects_not_by_profile_name():
     assert "activeCount = d.active.length;" in ui
 
 
-def test_ui_series_card_numbers_runs_and_marks_tools_not_called_every_time():
+def test_ui_series_card_is_one_table_of_answers_across_both_profiles():
     ui = _ui()
-    assert "el('span', {text: String(i + 1)})" in ui
-    assert "arm.tool_counts[name] < n" in ui
-    assert "partial.indexOf(name) >= 0 ? el('b', {text: name})" in ui
-    for key in ("x5SameSub", "x5Variants", "x5InAll", "x5InOne", "x5InK", "x5Other", "x5OtherAnswer",
-                "x5ToolsH", "x5RunsAria", "x5ColNo", "x5ColTools", "x5ColTrace"):
-        assert ui.count(key + ": '") == 2
+    assert "renderSeriesTable(rows, arms, armKeys, d.runs)" in ui
+    assert "renderEachRun(rows, arms, armKeys)" in ui
+    assert "letterFor" not in ui and "answerSignature" not in ui
+    for key in ("x5Of", "x5Never", "x5ColAnswer", "x5Baseline", "x5ToolsH", "x5OutFx", "x5OutLimits", "x5OutAsked",
+                "x5OutEscalated", "x5OutError", "x5OutAnswered", "x5KindReceives", "x5KindSpread", "x5KindDailyLeft",
+                "x5KindMonthlyLeft", "x5NoNumbers", "x5RefOk", "x5RefBad", "x5Sample", "x5SampleDiff", "x5RowsNote",
+                "x5EachRun", "x5EachRunSub", "x5EachRunHint", "x5EachRunWhy", "x5VerdictNew", "x5Stable", "x5Maybe",
+                "x5VerdictShift", "x5VerdictSame", "x5RunsAria"):
+        assert ui.count(key + ": '") == 2, key
 
 
 def test_ui_tells_what_each_send_button_does():
@@ -529,6 +532,9 @@ def test_series_runs_fresh_sessions_and_counts_the_tools():
     assert all(x["step_number"] == 1 for x in cur["runs"])
     assert cur["tool_counts"] == {"get_account": 3}
     assert prof["prompt_version"] == "base.v1+D01+D02+D03"
+    assert all("key" in x["facts"] for x in cur["runs"] + prof["runs"])
+    for arm in ("profile", "current"):
+        assert sum(row["arms"][arm]["count"] for row in body["rows"]) == 3
     pinned = client.post("/api/_test/series",
                          json={"message": "hi", "runs": 1, "profile": "clean"},
                          headers=_hdr(profile="lesson-03", defects="D26")).json()

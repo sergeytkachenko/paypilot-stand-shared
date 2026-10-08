@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
-from app import clock, config, db, defects, otel, runctx, tracing
+from app import answers, clock, config, db, defects, otel, runctx, tracing
 from app.agent import explain, loop, pricing, prompt, router, summarize, tools
 from app.engines import reference
 
@@ -101,6 +101,7 @@ def _tools_called(request_id: str) -> list[str]:
 def _fresh_run(message: str) -> dict:
     conditions = _arm_conditions()
     res = loop.run_turn(None, message)
+    calls = answers.tool_calls(res["request_id"])
     return {
         "profile": defects.current_profile(),
         "active_defects": sorted(defects.active()),
@@ -112,6 +113,8 @@ def _fresh_run(message: str) -> dict:
         "elapsed_ms": res["elapsed_ms"],
         "model": _model_of(res["request_id"]),
         "tools_called": _tools_called(res["request_id"]),
+        "facts": answers.classify(message, res["answer"], calls),
+        "tool_brief": answers.tool_brief(calls),
         **conditions,
     }
 
@@ -179,6 +182,8 @@ def test_series(body: SeriesIn):
         if body.profile is not None:
             with runctx.override(profile=body.profile, defects=""):
                 out["arms"]["profile"] = _series_arm(body.message, runs)
+        order = ["profile", "current"] if "profile" in out["arms"] else ["current"]
+        out["rows"] = answers.group({a: out["arms"][a]["runs"] for a in order})
         return out
     finally:
         _series_slots.release()
