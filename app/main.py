@@ -2,6 +2,7 @@
 import hmac
 import os
 import threading
+from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -214,6 +215,7 @@ class ExplainArm(BaseModel):
 
 class ExplainIn(BaseModel):
     message: str
+    lang: Literal["uk", "en"] = "uk"
     clean: ExplainArm
     profile: ExplainArm
 
@@ -229,7 +231,7 @@ def test_compare_explain(body: ExplainIn):
     facts = explain.build_facts(body.message, trees["clean"], trees["profile"],
                                 body.clean.answer, body.profile.answer)
     try:
-        return explain.explain(facts)
+        return explain.explain(facts, body.lang)
     except Exception as e:
         raise HTTPException(502, f"explain model failed: {e}")
 
