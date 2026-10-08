@@ -85,6 +85,14 @@ def _state_tables():
         assert client.get(f"/api/_test/state/{table}").status_code == 200, table
 
 
+def _reference_values():
+    from app.engines import policy
+    body = client.get("/api/_test/reference").json()
+    assert body["FX_SPREAD_PCT"] == policy.FX_SPREAD_PCT, body
+    assert body["DISPUTE_WINDOWS_DAYS"] == policy.DISPUTE_WINDOWS_DAYS, body
+    assert not any("AML" in key for key in body), sorted(body)
+
+
 def _clock_control():
     assert client.post("/api/_test/clock",
                        json={"now": "2026-12-01T00:00:00Z"}).status_code == 200
@@ -129,6 +137,7 @@ for label, fn in [
     ("every defect toggles cleanly", _every_defect_toggles),
     ("state tables readable", _state_tables),
     ("clock control", _clock_control),
+    ("engine reference values", _reference_values),
     ("reset restores seed", _reset_restores_seed),
     ("audit artefacts present", _artefacts_present),
     ("corpus at spec size", _corpus_size),

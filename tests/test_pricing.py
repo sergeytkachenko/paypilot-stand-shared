@@ -1,0 +1,24 @@
+from app.agent import pricing
+
+
+def test_haiku_cost_matches_the_list_price():
+    assert pricing.cost_usd("claude-haiku-4-5", 2452, 114) == 0.003022
+
+
+def test_dated_and_qualified_model_ids_resolve_to_the_same_price():
+    expected = pricing.cost_usd("claude-haiku-4-5", 1000, 100)
+    assert pricing.cost_usd("claude-haiku-4-5-20251001", 1000, 100) == expected
+    assert pricing.cost_usd("anthropic/claude-haiku-4-5", 1000, 100) == expected
+    assert pricing.cost_usd("Claude-Haiku-4-5", 1000, 100) == expected
+
+
+def test_unknown_model_has_no_price():
+    assert pricing.cost_usd("gpt-5-mini", 1000, 100) is None
+    assert pricing.cost_usd("", 1000, 100) is None
+    assert pricing.cost_usd(None, 1000, 100) is None
+
+
+def test_total_is_empty_when_any_part_is_unknown():
+    assert pricing.total_cost_usd([0.001, 0.002]) == 0.003
+    assert pricing.total_cost_usd([0.001, None]) is None
+    assert pricing.total_cost_usd([]) is None

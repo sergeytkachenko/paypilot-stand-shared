@@ -174,7 +174,7 @@ def test_ui_controls_the_knobs_the_lessons_need():
     runbook sent a lecturer to a terminal mid-class. L01 audits the prompt as
     an artefact and it had no on-screen surface at all."""
     ui = _ui()
-    for handler in ("setSummarize", "setRetrieval", "togglePrompt"):
+    for handler in ("setSummarize", "setRetrieval", "showPrompt"):
         assert f"function {handler}" in ui, handler
     for endpoint in ("_test/summarize_after", "_test/retrieval", "_test/prompt"):
         assert endpoint in ui, endpoint
@@ -325,7 +325,7 @@ def test_explain_sends_both_answers_and_tool_diffs_to_the_light_model(monkeypatc
     assert r.status_code == 200
     assert r.json()["explanation"] == "- профіль назвав іншу суму"
     assert r.json()["model"] == "light-model"
-    assert r.json()["usage"] == {"input_tokens": 11, "output_tokens": 7}
+    assert r.json()["usage"] == {"input_tokens": 11, "output_tokens": 7, "cost_usd": None}
     sent = calls[0]
     assert sent["tools"] == []
     assert sent["model"] == "light-model"
@@ -588,3 +588,65 @@ def test_providers_send_temperature_only_when_configured(monkeypatch):
         cfg._optional_float("LLM_TEMPERATURE")
     monkeypatch.setenv("LLM_TEMPERATURE", "0.2")
     assert cfg._optional_float("LLM_TEMPERATURE") == 0.2
+
+
+def test_reference_serves_the_engine_values_and_hides_the_monitoring_threshold():
+    import json
+    from app.engines import policy
+    body = client.get("/api/_test/reference").json()
+    assert body["FX_SPREAD_PCT"] == policy.FX_SPREAD_PCT
+    assert body["DISPUTE_WINDOWS_DAYS"] == policy.DISPUTE_WINDOWS_DAYS
+    assert body["FX_FREE_MONTHLY_ALLOWANCE_EUR"] == policy.FX_FREE_MONTHLY_ALLOWANCE_EUR
+    assert body["TRANSFER_FEES"]["swift"] == {"flat_fee_eur": 15.0, "percent_fee": 0.3}
+    assert not any("AML" in key for key in body)
+    assert str(policy.AML_MONITORING_THRESHOLD_EUR) not in json.dumps(body)
+
+
+def test_reference_does_not_follow_the_profile():
+    clean = client.get("/api/_test/reference", headers=_hdr(profile="clean")).json()
+    broken = client.get("/api/_test/reference",
+                        headers=_hdr(profile="lesson-03", defects="D20")).json()
+    assert clean == broken
+
+
+def test_prompt_endpoint_follows_the_header_so_the_ui_can_diff_against_clean():
+    lesson = client.get("/api/_test/prompt", headers=_hdr(profile="lesson-01")).json()
+    clean = client.get("/api/_test/prompt",
+                       headers=_hdr(profile="clean", defects="")).json()
+    assert lesson["version"] == "base.v1+D01+D02+D03"
+    assert clean["version"] == "base.v1" and clean["overlays"] == []
+    assert lesson["text"] != clean["text"]
+
+
+def test_chat_usage_names_the_model_and_leaves_an_unknown_price_empty():
+    usage = client.post("/chat", json={"message": "Balance for CUS-0001?"}).json()["usage"]
+    assert usage["model"] == "mock-1"
+    assert usage["cost_usd"] is None
+
+
+def test_series_and_compare_carry_the_cost(monkeypatch):
+    from app.agent import pricing
+    monkeypatch.setitem(pricing.PRICES_PER_MTOK_USD, "mock-1", (1.0, 5.0))
+    series = client.post("/api/_test/series",
+                         json={"message": "Balance for CUS-0001?", "runs": 2}).json()
+    arm = series["arms"]["current"]
+    per_run = [r["usage"]["cost_usd"] for r in arm["runs"]]
+    assert all(c and c > 0 for c in per_run)
+    assert arm["usage"]["cost_usd"] == round(sum(per_run), 6)
+    compare = client.post("/api/_test/compare",
+                          json={"message": "Balance for CUS-0001?", "profile": "lesson-01"}).json()
+    assert compare["clean"]["usage"]["cost_usd"] > 0
+    assert compare["profile"]["usage"]["cost_usd"] > 0
+
+
+def test_ui_diffs_the_prompt_against_clean_and_prices_every_run():
+    ui = _ui()
+    for marker in ("function showPrompt", "function lineDiff",
+                   "{profile: 'clean', defects: ''}", "if(promptMode) showPrompt(promptMode);",
+                   "_test/reference", "function loadReference", "function costPart",
+                   "addSpend(u.cost_usd)", "addSpend(arm.usage.cost_usd)",
+                   "addSpend(side.usage.cost_usd)", "один хід без історії",
+                   'href="/docs"', 'id="seedBlock"', 'id="seedSum"'):
+        assert marker in ui, marker
+    prompt_render = ui.split("function renderPromptLines", 1)[1].split("async function showPrompt", 1)[0]
+    assert "innerHTML" not in prompt_render

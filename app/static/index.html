@@ -118,6 +118,17 @@
   .frag{font:11px var(--mono);color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere;
         padding-left:8px;border-left:2px solid var(--line);margin:1px 0 1px 12px}
   code{font:11px var(--mono);background:var(--panel2);padding:1px 5px;border-radius:4px}
+  .chat-head a{font:12px var(--mono);color:var(--accent);text-decoration:none}
+  .chat-head a:hover{text-decoration:underline}
+  .pmode button.sel{border-color:var(--accent);color:var(--accent)}
+  #promptBox .pl{display:block;white-space:pre-wrap}
+  #promptBox .pl.add{background:#1e4a33}
+  #promptBox .pl.del{background:#4a1e1e;text-decoration:line-through}
+  .ref{font:11px var(--mono);color:var(--muted)}
+  .ref table{width:100%;border-collapse:collapse;margin:4px 0 10px}
+  .ref th,.ref td{padding:2px 6px;border-bottom:1px solid var(--line);text-align:left}
+  .ref th{color:var(--text);font-weight:600}
+  .ref td.num{text-align:right}
 
   /* narrow screens: these must sit after the base rules above */
   @media (max-width: 1100px){ .side{width:340px} }
@@ -138,7 +149,10 @@
     <span class="pill" id="pClock">—</span>
     <span class="pill" id="pKnobs" style="display:none"></span>
     <span class="pill" id="pProvider">—</span>
+    <span class="pill" id="pSpend" style="display:none"></span>
     <span style="flex:1"></span>
+    <a href="#seedBlock" title="Клієнти, рахунки й тіри зі seed-бази">Дані клієнтів</a>
+    <a href="/docs" target="_blank" rel="noopener" title="Усі ендпоінти стенду (Swagger)">API</a>
     <button onclick="newSession()">Нова сесія</button>
   </div>
   <div class="msgs" id="msgs"></div>
@@ -188,6 +202,15 @@
   </div>
 
   <div>
+    <h2>Довідник clean</h2>
+    <div class="hint" style="margin-bottom:6px">
+      Значення, які рахують рушії банку (<code>app/engines/policy.py</code>). Це еталон
+      для clean; на профілях заняття агент може відповідати інакше — це і шукаємо.
+    </div>
+    <div class="ref" id="ref">завантаження…</div>
+  </div>
+
+  <div>
     <h2>Пам'ять і пошук</h2>
     <div class="row">
       <span class="hint" style="min-width:96px">згортка після</span>
@@ -212,10 +235,13 @@
 
   <div>
     <h2>Системний промпт</h2>
-    <div class="row">
-      <button onclick="togglePrompt()">Показати / сховати</button>
-      <span class="hint" id="promptMeta"></span>
+    <div class="row pmode">
+      <button id="pmProfile" onclick="showPrompt('profile')">Профіль</button>
+      <button id="pmClean" onclick="showPrompt('clean')">clean</button>
+      <button id="pmDiff" onclick="showPrompt('diff')">Різниця з clean</button>
+      <button onclick="showPrompt(null)">Сховати</button>
     </div>
+    <div class="hint" id="promptMeta" style="margin-top:6px"></div>
     <pre id="promptBox" style="display:none"></pre>
   </div>
 
@@ -225,8 +251,9 @@
     <div class="attrs" id="attrs" style="margin-top:8px;display:none"></div>
   </div>
 
-  <div>
+  <div id="seedBlock">
     <h2>Seed-дані</h2>
+    <div class="hint" id="seedSum" style="margin-bottom:6px"></div>
     <div class="seed" id="seed">завантаження…</div>
   </div>
 </div>
@@ -376,7 +403,7 @@ async function send(){
     a.onclick = function(){ loadTrace(res.request_id); };
     m.appendChild(document.createTextNode(
       'крок ' + res.step_number + ' · in ' + u.input_tokens +
-      ' / out ' + u.output_tokens + ' tok' +
+      ' / out ' + u.output_tokens + ' tok' + costPart(u.cost_usd) +
       // latency is a requirement in US-01 and a budget metric in L08; the API
       // returns it, so it belongs next to the token count rather than one
       // trace fetch away
@@ -384,6 +411,7 @@ async function send(){
       ' · промпт ' + res.prompt_version + ' · '));
     m.appendChild(a);
     thinking.appendChild(m);
+    addSpend(u.cost_usd);
     loadTrace(res.request_id);
     renderComposerHint();
   }catch(e){
@@ -394,6 +422,25 @@ async function send(){
     $('sendBtn').disabled = false;
     inp.focus();
   }
+}
+
+let spentUsd = 0, spentUnpriced = 0;
+
+function fmtUsd(c){
+  return '$' + (c < 0.01 ? c.toFixed(4) : c.toFixed(3));
+}
+function costPart(c){
+  return c == null ? '' : ' · ≈ ' + fmtUsd(c);
+}
+function addSpend(c){
+  if(c == null) spentUnpriced += 1; else spentUsd += c;
+  const pill = $('pSpend');
+  pill.style.display = '';
+  pill.textContent = spentUsd || !spentUnpriced
+    ? 'з відкриття сторінки ≈ ' + fmtUsd(spentUsd) +
+      (spentUnpriced ? ' + ' + spentUnpriced + ' запитів без ціни' : '')
+    : 'вартість: ціна моделі стенду невідома';
+  pill.title = 'Оцінка за прайсом провайдера для моделі стенду; точна сума — у консолі провайдера';
 }
 
 function turnsWord(n){
@@ -411,7 +458,7 @@ function renderComposerHint(){
     : 'Надіслати — профіль ' + arm + ', нова сесія без історії';
   const cmpPart = (currentProfile === 'clean' && !pins.length)
     ? 'clean vs профіль — профіль зараз clean і дефектів не ввімкнено, обидві руки будуть однакові; оберіть профіль заняття праворуч'
-    : 'clean vs профіль — те саме питання на clean і на ' + arm + ', обидві руки з нової сесії';
+    : 'clean vs профіль — те саме питання на clean і на ' + arm + ', обидві руки з нової сесії: один хід без історії розмови';
   const serPart = '×5 — те саме питання ' + SERIES_RUNS + ' разів на ' + arm +
     (currentProfile === 'clean' && !pins.length ? '' : ' і ' + SERIES_RUNS + ' разів на clean') +
     ', кожен прогін з нової сесії; рахує, у скількох прогонах викликано кожен інструмент';
@@ -600,8 +647,10 @@ function renderSeriesArm(holder, label, arm){
   const m = document.createElement('div');
   m.className = 'meta';
   m.textContent = 'in ' + arm.usage.input_tokens + ' / out ' + arm.usage.output_tokens +
-    ' tok · ' + Math.round(arm.elapsed_ms) + ' ms · промпт ' + arm.prompt_version;
+    ' tok' + costPart(arm.usage.cost_usd) + ' · ' + Math.round(arm.elapsed_ms) +
+    ' ms · промпт ' + arm.prompt_version;
   col.appendChild(m);
+  addSpend(arm.usage.cost_usd);
   holder.appendChild(col);
 }
 
@@ -698,11 +747,13 @@ async function compare(){
       a.onclick = function(){ loadTrace(side.request_id); };
       m.appendChild(document.createTextNode(
         'in ' + side.usage.input_tokens + ' / out ' + side.usage.output_tokens + ' tok' +
+        costPart(side.usage.cost_usd) +
         (side.elapsed_ms != null ? ' · ' + Math.round(side.elapsed_ms) + ' ms' : '') +
         ' · промпт ' + side.prompt_version + ' · '));
       m.appendChild(a);
       col.appendChild(m);
       holder.appendChild(col);
+      addSpend(side.usage.cost_usd);
     });
     cb.onchange = function(){
       renderMarked(diff.left, bodies.left, cb.checked);
@@ -740,9 +791,11 @@ async function showExplanation(box, message, d){
     const src = document.createElement('div');
     src.className = 'src';
     src.textContent = 'пояснення моделі ' + (r.model || '—') +
-      (r.usage ? ' · in ' + r.usage.input_tokens + ' / out ' + r.usage.output_tokens + ' tok' : '') +
+      (r.usage ? ' · in ' + r.usage.input_tokens + ' / out ' + r.usage.output_tokens + ' tok' +
+                 costPart(r.usage.cost_usd) : '') +
       ' — це думка моделі, а не перевірка: звірте її з підсвіткою й таблицею інструментів нижче';
     box.appendChild(src);
+    if(r.usage) addSpend(r.usage.cost_usd);
   }catch(e){
     box.classList.add('err');
     body.textContent = 'Смислове пояснення недоступне: ' + e.message +
@@ -1002,6 +1055,7 @@ async function refreshState(){
   pk.style.display = off.length ? '' : 'none';
   pk.className = 'pill ' + (off.length ? 'on' : '');
   renderComposerHint();
+  if(promptMode) showPrompt(promptMode);
 }
 
 function renderDefects(d){
@@ -1100,17 +1154,70 @@ async function setAdmin(){
   refreshState();
 }
 
-// L01 audits the prompt as an artefact, and it was only reachable with curl —
-// a lecturer had to leave the screen the class is looking at.
-async function togglePrompt(){
+let promptMode = null;
+
+function cleanSettingsHeader(){
+  const next = Object.assign({}, settings, {profile: 'clean', defects: ''});
+  return {'X-Stand-Settings': JSON.stringify(next)};
+}
+
+function lineDiff(a, b){
+  const n = a.length, m = b.length, dp = [];
+  for(let i = 0; i <= n; i++) dp.push(new Uint16Array(m + 1));
+  for(let i = n - 1; i >= 0; i--){
+    for(let j = m - 1; j >= 0; j--){
+      dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  const out = [];
+  let i = 0, j = 0;
+  while(i < n && j < m){
+    if(a[i] === b[j]){ out.push({op: 'same', text: a[i]}); i++; j++; }
+    else if(dp[i + 1][j] >= dp[i][j + 1]){ out.push({op: 'del', text: a[i]}); i++; }
+    else{ out.push({op: 'add', text: b[j]}); j++; }
+  }
+  while(i < n){ out.push({op: 'del', text: a[i]}); i++; }
+  while(j < m){ out.push({op: 'add', text: b[j]}); j++; }
+  return out;
+}
+
+function renderPromptLines(box, lines){
+  box.textContent = '';
+  lines.forEach(function(l){
+    const row = document.createElement('span');
+    row.className = 'pl' + (l.op === 'same' ? '' : ' ' + l.op);
+    row.textContent = (l.op === 'add' ? '+ ' : l.op === 'del' ? '− ' : '  ') + (l.text || ' ');
+    box.appendChild(row);
+  });
+}
+
+async function showPrompt(mode){
+  promptMode = mode;
+  ['profile', 'clean', 'diff'].forEach(function(m){
+    $('pm' + m.charAt(0).toUpperCase() + m.slice(1)).classList.toggle('sel', m === mode);
+  });
   const box = $('promptBox');
-  if(box.style.display !== 'none'){ box.style.display = 'none'; return; }
+  if(!mode){ box.style.display = 'none'; $('promptMeta').textContent = ''; return; }
   try{
-    const p = await api('/api/_test/prompt');
-    box.textContent = p.text;
+    const pair = await Promise.all([
+      api('/api/_test/prompt'),
+      api('/api/_test/prompt', {headers: cleanSettingsHeader()})]);
+    if(promptMode !== mode) return;
+    const mine = pair[0], clean = pair[1];
+    const diff = lineDiff(clean.text.split('\n'), mine.text.split('\n'));
+    const added = diff.filter(function(l){ return l.op === 'add'; }).length;
+    const removed = diff.filter(function(l){ return l.op === 'del'; }).length;
+    if(mode === 'diff'){
+      const changed = diff.filter(function(l){ return l.op !== 'same'; });
+      if(changed.length) renderPromptLines(box, changed);
+      else box.textContent = 'Промпт профілю ' + currentProfile + ' збігається з clean.';
+    }else{
+      box.textContent = (mode === 'clean' ? clean : mine).text;
+    }
     box.style.display = 'block';
-    $('promptMeta').textContent = p.version +
-      (p.overlays && p.overlays.length ? ' · overlay: ' + p.overlays.join(',') : ' · без overlay');
+    const shown = mode === 'clean' ? clean : mine;
+    $('promptMeta').textContent = (mode === 'diff' ? currentProfile + ' проти clean' : shown.version) +
+      ' · від clean: +' + added + ' / −' + removed + ' рядків';
   }catch(e){ fail(e); }
 }
 
@@ -1139,7 +1246,68 @@ async function loadSeed(){
         ? ' · <span style="color:var(--bad)">hold</span>' : '';
       return '<b>' + c.id + '</b> ' + c.tier + hold + '<br>&nbsp;&nbsp;' + accs;
     }).join('<br>');
+    const tiers = {};
+    s.customers.forEach(function(c){ tiers[c.tier] = (tiers[c.tier] || 0) + 1; });
+    const holds = s.customers.filter(function(c){ return c.compliance_hold; }).length;
+    $('seedSum').textContent = s.customers.length + ' клієнтів · ' + s.accounts.length +
+      ' рахунків · ' + s.transaction_count + ' транзакцій · ' +
+      Object.keys(tiers).sort().map(function(t){ return t + ' ×' + tiers[t]; }).join(', ') +
+      (holds ? ' · compliance hold: ' + holds : '') +
+      '. Агент не знає, хто ви: ID клієнта називайте в повідомленні.';
   }catch(e){ $('seed').textContent = 'недоступно'; }
+}
+
+function refTable(title, head, rows){
+  const wrap = document.createElement('div');
+  const t = document.createElement('table');
+  const h = document.createElement('tr');
+  [title].concat(head).forEach(function(cell, i){
+    const th = document.createElement('th');
+    th.textContent = cell;
+    if(i) th.className = 'num';
+    h.appendChild(th);
+  });
+  t.appendChild(h);
+  rows.forEach(function(r){
+    const tr = document.createElement('tr');
+    r.forEach(function(cell, i){
+      const td = document.createElement('td');
+      td.textContent = cell;
+      if(i) td.className = 'num';
+      tr.appendChild(td);
+    });
+    t.appendChild(tr);
+  });
+  wrap.appendChild(t);
+  return wrap;
+}
+
+async function loadReference(){
+  const box = $('ref');
+  try{
+    const r = await api('/api/_test/reference');
+    box.textContent = '';
+    const tiers = Object.keys(r.FX_SPREAD_PCT).sort();
+    const eur = function(v){ return Number(v).toLocaleString('uk-UA'); };
+    box.appendChild(refTable('тір', ['спред, %', 'FX без спреду, EUR/міс', 'ліміт, EUR/день', 'ліміт, EUR/міс'],
+      tiers.map(function(t){
+        return [t, String(r.FX_SPREAD_PCT[t]), eur(r.FX_FREE_MONTHLY_ALLOWANCE_EUR[t]),
+                eur(r.DAILY_LIMIT_EUR[t]), eur(r.MONTHLY_LIMIT_EUR[t])];
+      })));
+    box.appendChild(refTable('переказ', ['фіксовано, EUR', '+ % від суми'],
+      Object.keys(r.TRANSFER_FEES).map(function(k){
+        const f = r.TRANSFER_FEES[k];
+        return [k, String(f.flat_fee_eur), String(f.percent_fee)];
+      })));
+    box.appendChild(refTable('причина спору', ['вікно, днів'],
+      Object.keys(r.DISPUTE_WINDOWS_DAYS).map(function(k){
+        return [k, String(r.DISPUTE_WINDOWS_DAYS[k])];
+      })));
+    box.appendChild(refTable('валюта', ['до EUR'],
+      Object.keys(r.RATES_TO_EUR).map(function(k){
+        return [k, String(r.RATES_TO_EUR[k])];
+      })));
+  }catch(e){ box.textContent = 'недоступно: ' + e.message; }
 }
 
 $('inp').addEventListener('keydown', function(e){
@@ -1148,11 +1316,13 @@ $('inp').addEventListener('keydown', function(e){
 
 refreshState();
 loadSeed();
+loadReference();
 addMsg('Стенд готовий. clean — це агент без інжектованих дефектів, а не гарантовано правильна відповідь: ' +
        'модель має власну похибку, тож доказ — різниця частот, а не одна пара відповідей.', 'sys');
 addMsg('Профіль, дефекти, час і пошук, які ви задаєте праворуч, діють лише у цьому браузері; ' +
        'інші студенти працюють зі своїми.', 'sys');
-addMsg('«clean vs профіль» ставить одне питання на обидва профілі поруч; «×5» — п\'ять разів із нової сесії ' +
+addMsg('«clean vs профіль» ставить одне питання на обидва профілі поруч — один хід без історії, тож продовження ' +
+       'діалогу ставте кнопкою «Надіслати» в одній сесії; «×5» — п\'ять разів із нової сесії ' +
        'й рахує, у скількох прогонах викликано кожен інструмент.', 'sys');
 $('inp').focus();
 </script>

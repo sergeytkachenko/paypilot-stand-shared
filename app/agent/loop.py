@@ -3,7 +3,7 @@ import json
 import uuid
 
 from app import config, defects
-from app.agent import prompt, summarize, tools
+from app.agent import pricing, prompt, summarize, tools
 from app.agent.providers.base import get_provider
 from app.tracing import RequestTrace
 
@@ -71,6 +71,7 @@ def run_turn(session_id: str | None, user_message: str) -> dict:
     state["messages"].append({"role": "user", "content": user_message})
     answer = None
     total_in = total_out = 0
+    model = getattr(provider, "model", "")
 
     for step in range(config.MAX_AGENT_STEPS):
         with trace.span("llm.call", **{"agent.loop_step": step}) as s:
@@ -83,6 +84,7 @@ def run_turn(session_id: str | None, user_message: str) -> dict:
             })
         total_in += resp.input_tokens
         total_out += resp.output_tokens
+        model = resp.model or model
 
         if not resp.tool_calls:
             answer = resp.text or ""
@@ -112,7 +114,9 @@ def run_turn(session_id: str | None, user_message: str) -> dict:
             "answer": answer, "step_number": state["steps"],
             "prompt_version": prompt_version,
             "elapsed_ms": tree.get("duration_ms"),
-            "usage": {"input_tokens": total_in, "output_tokens": total_out}}
+            "usage": {"input_tokens": total_in, "output_tokens": total_out,
+                      "model": model,
+                      "cost_usd": pricing.cost_usd(model, total_in, total_out)}}
 
 
 def _execute_tool(trace: RequestTrace, tc: dict) -> dict:
