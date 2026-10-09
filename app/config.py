@@ -68,6 +68,11 @@ CLOCK_OVERRIDE = os.environ.get("CLOCK_OVERRIDE", "")
 
 STAND_LOCK_GLOBAL = os.environ.get("STAND_LOCK_GLOBAL", "").lower() in ("1", "true", "yes")
 STAND_ADMIN_TOKEN = os.environ.get("STAND_ADMIN_TOKEN", "")
+STAND_KEYS_REQUIRED = os.environ.get("STAND_KEYS_REQUIRED", "").lower() in ("1", "true", "yes")
+_key_daily_usd = _optional_float("STAND_KEY_DAILY_USD")
+STAND_KEY_DAILY_USD = 1.0 if _key_daily_usd is None else _key_daily_usd
+_key_monthly_usd = _optional_float("STAND_KEY_MONTHLY_USD")
+STAND_KEY_MONTHLY_USD = 5.0 if _key_monthly_usd is None else _key_monthly_usd
 
 DATA_DIR.mkdir(exist_ok=True)
 TRACES_DIR.mkdir(exist_ok=True)

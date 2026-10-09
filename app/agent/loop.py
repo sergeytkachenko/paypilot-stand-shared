@@ -2,7 +2,7 @@
 import json
 import uuid
 
-from app import config, defects, session_ctx
+from app import budget, config, defects, session_ctx
 from app.agent import language, pricing, prompt, router, summarize, tools
 from app.agent.providers.base import get_provider
 from app.tracing import RequestTrace
@@ -163,6 +163,7 @@ def _route(trace: RequestTrace, state: dict, system: str,
             "router.added_instructions": block,
             "router.error": decision.error,
         })
+    budget.charge(decision.model, decision.input_tokens, 0)
     return system, pricing.cost_usd(decision.model, decision.input_tokens, 0)
 
 

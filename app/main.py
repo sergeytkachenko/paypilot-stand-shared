@@ -8,11 +8,12 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
-from app import answers, clock, config, db, defects, otel, runctx, tracing
+from app import answers, budget, clock, config, db, defects, otel, runctx, tracing
 from app.agent import explain, loop, pricing, prompt, router, summarize, tools
 from app.engines import reference
 
 defects.validate_startup()
+budget.validate_startup()
 db.ensure_seeded()
 otel.init()
 
@@ -37,9 +38,37 @@ async def request_settings(request: Request, call_next):
         return JSONResponse({"detail": str(e)}, status_code=400)
     token = runctx.activate(settings)
     try:
-        return await call_next(request)
+        if not needs_key(request):
+            return await call_next(request)
+        key = budget.resolve(request.headers.get(budget.HEADER))
+        if key is None:
+            return JSONResponse({"detail": MISSING_KEY_DETAIL}, status_code=401)
+        try:
+            budget.check(key)
+            with budget.bind(key, request.url.path):
+                return await call_next(request)
+        except budget.BudgetExceeded as e:
+            return JSONResponse({"detail": str(e), "window": e.window,
+                                 "budget": e.report}, status_code=429)
+        except budget.KeyBusy as e:
+            return JSONResponse({"detail": str(e)}, status_code=429)
     finally:
         runctx.deactivate(token)
+
+
+SPENDING_PATHS = {"/chat", "/api/_test/compare", "/api/_test/series",
+                  "/api/_test/compare/explain", "/api/_test/series/explain"}
+
+MISSING_KEY_DETAIL = (
+    f"Потрібен ключ студента в заголовку {budget.HEADER}. Ключ видає лектор; "
+    "без нього спільний стенд не витрачає модель. Чужий або відкликаний ключ "
+    "теж дає 401.")
+
+
+def needs_key(request: Request) -> bool:
+    return (config.STAND_KEYS_REQUIRED and request.method == "POST"
+            and request.url.path.rstrip("/") in SPENDING_PATHS
+            and not is_admin(request))
 
 
 def is_admin(request: Request) -> bool:
@@ -290,8 +319,25 @@ def health(request: Request):
             "scope": runctx.scope(),
             "request_settings": runctx.current().as_dict(),
             "locked": config.STAND_LOCK_GLOBAL,
+            "keys_required": config.STAND_KEYS_REQUIRED,
             "admin": is_admin(request)}
 
+
+
+@app.get("/api/_test/budget")
+def test_budget(request: Request):
+    key = budget.resolve(request.headers.get(budget.HEADER))
+    if key is None:
+        raise HTTPException(401, MISSING_KEY_DETAIL)
+    return {"keys_required": config.STAND_KEYS_REQUIRED, **budget.usage(key)}
+
+
+@app.get("/api/_test/keys")
+def test_keys(request: Request):
+    if not is_admin(request):
+        raise HTTPException(403, f"Лише для лектора: заголовок {runctx.ADMIN_HEADER}")
+    return {"keys_required": config.STAND_KEYS_REQUIRED,
+            "keys": [budget.usage(k) for k in budget.all_keys()]}
 
 
 @app.get("/api/_test/defects")

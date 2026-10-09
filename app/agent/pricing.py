@@ -36,6 +36,14 @@ def cost_usd(model: str | None, input_tokens: int, output_tokens: int) -> float 
     return round((input_tokens * price_in + output_tokens * price_out) / 1_000_000, 6)
 
 
+def ceiling_cost_usd(input_tokens: int, output_tokens: int) -> float:
+    rates = list(PRICES_PER_MTOK_USD.values()) + [
+        (tier[1], tier[2]) for tier in LONG_PROMPT_PRICES_PER_MTOK_USD.values()]
+    price_in = max(r[0] for r in rates)
+    price_out = max(r[1] for r in rates)
+    return round((input_tokens * price_in + output_tokens * price_out) / 1_000_000, 6)
+
+
 def total_cost_usd(costs: list[float | None]) -> float | None:
     if not costs or any(c is None for c in costs):
         return None

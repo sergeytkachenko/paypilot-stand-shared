@@ -15,6 +15,7 @@ from pathlib import Path as _Path
 
 _tmpdir = tempfile.mkdtemp(prefix="paypilot-tests-")
 os.environ["PAYPILOT_DB"] = str(_Path(_tmpdir) / "test.db")
+os.environ["PAYPILOT_BUDGET_DB"] = str(_Path(_tmpdir) / "budget.db")
 
 import pytest
 
