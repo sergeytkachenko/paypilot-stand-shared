@@ -59,6 +59,17 @@ def chat_ui():
     return FileResponse(STATIC_DIR / "index.html")
 
 
+@app.get("/glossary.pdf", include_in_schema=False)
+def glossary_pdf():
+    ""
+    return FileResponse(
+        STATIC_DIR / "qa-glossary.pdf",
+        media_type="application/pdf",
+        filename="qa-glossary-L01-L03.pdf",
+        content_disposition_type="inline",
+    )
+
+
 class ChatIn(BaseModel):
     message: str
     session_id: str | None = None
