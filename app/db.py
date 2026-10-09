@@ -2,6 +2,8 @@
 import json
 import os
 import sqlite3
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 
 from app import config, seed
@@ -40,33 +42,58 @@ STATE_TABLES = ("customers", "accounts", "transactions", "disputes",
                 "statements_sent", "escalations")
 
 
+_path_override: ContextVar[Path | None] = ContextVar("stand_db_path", default=None)
+
+
+def path() -> Path:
+    return _path_override.get() or DB_PATH
+
+
+@contextmanager
+def bound(target: Path):
+    token = _path_override.set(target)
+    try:
+        yield
+    finally:
+        _path_override.reset(token)
+
+
 def connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(path())
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 
-def reset() -> dict:
-    ""
-    if DB_PATH.exists():
-        DB_PATH.unlink()
-    conn = connect()
-    conn.executescript(SCHEMA)
-    conn.executemany("INSERT INTO customers VALUES (?,?,?,?,?,?)", seed.CUSTOMERS)
-    conn.executemany("INSERT INTO accounts VALUES (?,?,?,?)", seed.ACCOUNTS)
-    conn.executemany("INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?)",
-                     seed.TRANSACTIONS)
-    conn.commit()
-    conn.close()
+def build(target: Path) -> dict:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    staging = target.with_name(target.name + ".tmp")
+    if staging.exists():
+        staging.unlink()
+    conn = sqlite3.connect(staging)
+    try:
+        conn.executescript(SCHEMA)
+        conn.executemany("INSERT INTO customers VALUES (?,?,?,?,?,?)", seed.CUSTOMERS)
+        conn.executemany("INSERT INTO accounts VALUES (?,?,?,?)", seed.ACCOUNTS)
+        conn.executemany("INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?)",
+                         seed.TRANSACTIONS)
+        conn.commit()
+    finally:
+        conn.close()
+    os.replace(staging, target)
     return {"seed_version": seed.SEED_VERSION,
             "customers": len(seed.CUSTOMERS),
             "accounts": len(seed.ACCOUNTS),
             "transactions": len(seed.TRANSACTIONS)}
 
 
+def reset() -> dict:
+    ""
+    return build(path())
+
+
 def ensure_seeded() -> None:
-    if not DB_PATH.exists():
+    if not path().exists():
         reset()
 
 

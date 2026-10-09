@@ -33,16 +33,24 @@ def current() -> RunSettings:
     return _current.get()
 
 
+_layer: ContextVar[str] = ContextVar("stand_run_layer", default="request")
+
+
 def scope() -> str:
-    return "server" if current().is_empty() else "request"
+    return "server" if current().is_empty() else _layer.get()
 
 
-def activate(settings: RunSettings) -> Token:
-    return _current.set(settings)
+def layered(base: RunSettings, top: RunSettings) -> RunSettings:
+    return replace(base, **top.as_dict())
 
 
-def deactivate(token: Token) -> None:
-    _current.reset(token)
+def activate(settings: RunSettings, layer: str = "request") -> tuple[Token, Token]:
+    return _current.set(settings), _layer.set(layer)
+
+
+def deactivate(token: tuple[Token, Token]) -> None:
+    _current.reset(token[0])
+    _layer.reset(token[1])
 
 
 @contextmanager
