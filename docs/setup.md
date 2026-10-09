@@ -236,6 +236,42 @@ What is my balance?
 
 ---
 
+## 7. Спільний стенд: ключі студентів
+
+Цей розділ — для лектора, що тримає один стенд на весь потік.
+
+1. У `.env` стенду: `STAND_LOCK_GLOBAL=1`, `STAND_ADMIN_TOKEN=<секрет>`,
+   `STAND_KEYS_REQUIRED=1`. Ліміти нових ключів — `STAND_KEY_DAILY_USD`
+   (типово `1.0`) і `STAND_KEY_MONTHLY_USD` (типово `5.0`). Потім
+   `docker compose up -d`.
+2. Модель має бути в таблиці цін `app/agent/pricing.py`: з увімкненими
+   ключами стенд не стартує на моделі без ціни, а `doctor` показує
+   `student keys [FAIL]` з її назвою. Це стосується `LLM_MODEL`,
+   `EXPLAIN_MODEL` і, з роутером, `TYPESAFE_MODEL`.
+3. Видати ключі — повний ключ друкується один раз, у базі лишається лише хеш:
+
+   ```bash
+   docker compose exec stand python scripts/keys.py create --labels-file students.txt > keys.csv
+   docker compose exec stand python scripts/keys.py create --label "Олена Коваль"
+   docker compose exec stand python scripts/keys.py create --count 30
+   ```
+
+   `students.txt` — по імені на рядок; файл має лежати в контейнері
+   (`docker compose cp students.txt stand:/stand/`).
+4. Стежити і керувати:
+
+   ```bash
+   docker compose exec stand python scripts/keys.py list
+   docker compose exec stand python scripts/keys.py revoke psk_AbCdEfGh
+   docker compose exec stand python scripts/keys.py set-limits psk_AbCdEfGh --daily 2
+   ```
+
+   Те саме видно через `GET /api/_test/keys` із заголовком `X-Stand-Admin`.
+
+Ключі й облік витрат лежать в окремому файлі `data/budget.db` у томі
+`stand-data`: `POST /api/_test/reset` їх не чіпає, `docker compose down -v`
+— видаляє. Запити з `X-Stand-Admin` ключа не потребують і в облік не йдуть.
+
 ## Якщо щось не працює
 
 **Docker Desktop не стартує на Windows.** Майже завжди — вимкнена

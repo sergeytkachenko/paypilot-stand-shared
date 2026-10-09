@@ -96,6 +96,17 @@ def main() -> int:
     except Exception as e:
         check("profile/defects config", FAIL, str(e))
 
+    from app import budget
+    if not config.STAND_KEYS_REQUIRED:
+        check("student keys", OK, "off — spending routes are open (STAND_KEYS_REQUIRED=0)")
+    elif budget.unpriced_models():
+        check("student keys", FAIL,
+              "no price in app/agent/pricing.py for " + ", ".join(budget.unpriced_models()))
+    else:
+        check("student keys", OK,
+              f"on — {len(budget.all_keys())} keys, defaults "
+              f"${config.STAND_KEY_DAILY_USD:g}/24h, ${config.STAND_KEY_MONTHLY_USD:g}/30d")
+
     width = max(len(n) for n, _, _ in results) + 2
     worst = OK
     for name, status, detail in results:

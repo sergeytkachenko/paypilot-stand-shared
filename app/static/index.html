@@ -461,8 +461,19 @@
       <button class="mi" role="menuitem" onclick="closePops();openReference(lastCompareTier || customerTier())"><span><span data-i18n="reference"></span><small data-i18n="referenceSub"></small></span></button>
       <a class="mi" role="menuitem" href="/glossary.pdf" target="_blank" rel="noopener"><span><span data-i18n="glossaryLink"></span><small data-i18n="glossarySub"></small></span><span class="caret">↗</span></a>
       <div class="msep"></div>
+      <button class="mi" role="menuitem" id="keyItem" hidden onclick="closePops();togglePop('keyPop', $('menuBtn'));showKeyUsage()"><span data-i18n="studentKey"></span><span class="badge" id="keyBadge" hidden></span></button>
       <button class="mi" role="menuitem" id="lectItem" hidden onclick="closePops();togglePop('lectPop', $('menuBtn'))"><span data-i18n="lecturer"></span><span class="badge" id="lectBadge" hidden></span></button>
       <a class="mi" role="menuitem" href="/docs" target="_blank" rel="noopener"><span data-i18n="apiLink"></span><span class="caret">↗</span></a>
+    </div>
+  </div>
+  <div id="keyPop" class="pop lect" role="dialog" hidden>
+    <h3 data-i18n="studentKey"></h3>
+    <div class="sec">
+      <span class="note" data-i18n="keyNote"></span>
+      <input type="password" id="keyInp" autocomplete="off">
+      <button class="primary" style="align-self:flex-start" onclick="setStudentKey()" data-i18n="keySave"></button>
+      <span class="note mono" id="keyUsage"></span>
+      <button class="link" id="keyClear" style="align-self:flex-start" onclick="clearStudentKey()" data-i18n="keyClear"></button>
     </div>
   </div>
   <div id="lectPop" class="pop lect" role="dialog" hidden>
@@ -623,6 +634,7 @@ const I18N = {
     advanced: 'Розширені налаштування', advancedSub: 'дефекти, час, пам’ять і пошук · з L04',
     customersLink: 'Дані клієнтів', customersSub: 'ID, рівень, рахунки', lecturer: 'Для лектора', lecturerBadge: 'лектор', apiLink: 'API (Swagger)',
     lockedNote: 'Спільний стенд заблоковано. Серверні дії доступні лише лектору; ваші налаштування діють тільки в цьому браузері.',
+    studentKey: 'Ключ студента', keyNote: 'Чат, порівняння й ×5 на спільному стенді йдуть за вашим ключем: $1 за 24 години і $5 за 30 днів. Ключ видає лектор і зберігається лише в цьому браузері.', keyPh: 'psk_…', keySave: 'Зберегти ключ', keyClear: 'Прибрати ключ', keyBadge: 'ключ', keyMissing: 'Ключ не задано.', keyBad: 'Ключ не підійшов: перевірте його або попросіть лектора.', keyUsage: '24 год: {d} з {dl} · 30 днів: {m} з {ml}',
     tokenPh: 'токен лектора', signIn: 'Увійти як лектор', resetState: 'Скинути стан',
     resetStateHint: 'повертає базу до seed — для всіх студентів', lecturerOn: 'Ви увійшли як лектор.', signOut: 'Вийти',
     pdesc: {
@@ -754,6 +766,7 @@ const I18N = {
     advanced: 'Advanced settings', advancedSub: 'defects, clock, memory and search · from L04',
     customersLink: 'Customer data', customersSub: 'ID, tier, accounts', lecturer: 'For the lecturer', lecturerBadge: 'lecturer', apiLink: 'API (Swagger)',
     lockedNote: 'This shared stand is locked. Server actions are lecturer-only; your settings apply to this browser only.',
+    studentKey: 'Student key', keyNote: 'Chat, comparison and ×5 on the shared stand run on your key: $1 per 24 hours and $5 per 30 days. The lecturer issues the key; it is stored in this browser only.', keyPh: 'psk_…', keySave: 'Save key', keyClear: 'Remove key', keyBadge: 'key', keyMissing: 'No key set.', keyBad: 'The key didn’t match: check it or ask the lecturer.', keyUsage: '24 h: {d} of {dl} · 30 days: {m} of {ml}',
     tokenPh: 'lecturer token', signIn: 'Sign in as lecturer', resetState: 'Reset state',
     resetStateHint: 'restores the database to the seed — for every student', lecturerOn: 'Signed in as lecturer.', signOut: 'Sign out',
     pdesc: {
@@ -888,7 +901,7 @@ let lastCompareTier = '', activeCount = -1;
 
 let ALL_IDS = [];
 
-const SETTINGS_KEY = 'paypilot.settings', ADMIN_KEY = 'paypilot.admin';
+const SETTINGS_KEY = 'paypilot.settings', ADMIN_KEY = 'paypilot.admin', STUDENT_KEY = 'paypilot.studentKey';
 const UI_KEY = 'paypilot.ui';
 function readStore(key, fallback){
   try{ const v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); }
@@ -901,6 +914,8 @@ function writeStore(key, value){
 }
 let settings = readStore(SETTINGS_KEY, {}) || {};
 let adminToken = readStore(ADMIN_KEY, '') || '';
+let studentKey = readStore(STUDENT_KEY, '') || '';
+let keysRequired = false;
 let ui = Object.assign({lang: 'uk', theme: '', projector: false, customer: ''}, readStore(UI_KEY, {}) || {});
 
 function saveUi(){ writeStore(UI_KEY, ui); }
@@ -954,6 +969,7 @@ function settingsHeaders(){
   const h = {};
   if(Object.keys(settings).length) h['X-Stand-Settings'] = JSON.stringify(settings);
   if(adminToken) h['X-Stand-Admin'] = adminToken;
+  if(studentKey) h['X-Stand-Key'] = studentKey;
   return h;
 }
 function freshSession(reason){
@@ -2084,6 +2100,7 @@ async function refreshState(){
   knownProfiles = d.known_profiles || [];
   standLocked = !!h.locked;
   isAdmin = !!h.admin;
+  keysRequired = !!h.keys_required;
   standClock = c.now || '';
 
   $('profileName').textContent = d.profile;
@@ -2091,6 +2108,9 @@ async function refreshState(){
   $('whatDiffers').hidden = activeCount === 0;
   renderProfileList();
   $('lectItem').hidden = !standLocked;
+  $('keyItem').hidden = !keysRequired || isAdmin;
+  $('keyBadge').hidden = !studentKey;
+  $('keyBadge').textContent = t('keyBadge');
   $('lectBadge').hidden = !isAdmin;
   $('lectBadge').textContent = t('lecturerBadge');
   $('adminRow').hidden = !standLocked || isAdmin;
@@ -2237,6 +2257,38 @@ async function setAdmin(){
     if(!h.admin){ adminToken = ''; writeStore(ADMIN_KEY, null); }
   }catch(e){ fail(e); }
   refreshState();
+}
+
+function usd(v){ return '$' + Number(v || 0).toFixed(2); }
+async function showKeyUsage(){
+  $('keyClear').hidden = !studentKey;
+  if(!studentKey){ $('keyUsage').textContent = t('keyMissing'); return null; }
+  try{
+    const b = await api('/api/_test/budget');
+    $('keyUsage').textContent = b.label + ' · ' + t('keyUsage', {
+      d: usd(b.day.spent_usd), dl: usd(b.day.limit_usd),
+      m: usd(b.month.spent_usd), ml: usd(b.month.limit_usd)});
+    return b;
+  }catch(e){
+    $('keyUsage').textContent = e.status === 401 ? t('keyBad') : e.message;
+    return null;
+  }
+}
+
+async function setStudentKey(){
+  studentKey = $('keyInp').value.trim();
+  writeStore(STUDENT_KEY, studentKey || null);
+  $('keyInp').value = '';
+  const b = await showKeyUsage();
+  if(studentKey && !b){ studentKey = ''; writeStore(STUDENT_KEY, null); $('keyClear').hidden = true; }
+  $('keyBadge').hidden = !studentKey;
+}
+
+function clearStudentKey(){
+  studentKey = '';
+  writeStore(STUDENT_KEY, null);
+  $('keyBadge').hidden = true;
+  showKeyUsage();
 }
 
 function signOut(){
@@ -2530,7 +2582,7 @@ function togglePop(id, btn, forceOpen){
   setTimeout(function(){ popJustOpened = false; }, 0);
 }
 function closePops(){
-  ['profileList', 'menu', 'lectPop', 'custPop'].forEach(function(id){ $(id).hidden = true; });
+  ['profileList', 'menu', 'lectPop', 'keyPop', 'custPop'].forEach(function(id){ $(id).hidden = true; });
   ['profileBtn', 'menuBtn', 'custBtn'].forEach(function(id){ $(id).setAttribute('aria-expanded', 'false'); });
   openPop = null;
 }
@@ -2566,6 +2618,7 @@ function applyLang(){
   $('langUk').setAttribute('aria-pressed', String(ui.lang === 'uk'));
   $('langEn').setAttribute('aria-pressed', String(ui.lang === 'en'));
   $('adminInp').placeholder = t('tokenPh');
+  $('keyInp').placeholder = t('keyPh');
   $('custBtn').title = t('custTip');
   $('whatDiffers').textContent = t('whatDiffers');
   if(currentProfile !== '—') $('profileDesc').textContent = profileDesc(currentProfile);

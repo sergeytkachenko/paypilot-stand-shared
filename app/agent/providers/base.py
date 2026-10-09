@@ -19,16 +19,35 @@ class Provider:
         raise NotImplementedError
 
 
+class Metered:
+    def __init__(self, inner: Provider):
+        object.__setattr__(self, "_inner", inner)
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+    def __setattr__(self, name, value):
+        setattr(self._inner, name, value)
+
+    def complete(self, system: str, messages: list[dict],
+                 tools: list[dict]) -> ModelResponse:
+        from app import budget
+        resp = self._inner.complete(system, messages, tools)
+        budget.charge(resp.model or getattr(self._inner, "model", ""),
+                      resp.input_tokens, resp.output_tokens)
+        return resp
+
+
 def get_provider():
     from app import config
     kind = config.LLM_PROVIDER
     if kind == "mock":
         from app.agent.providers.mock import MockProvider
-        return MockProvider()
+        return Metered(MockProvider())
     if kind == "anthropic":
         from app.agent.providers.anthropic_provider import AnthropicProvider
-        return AnthropicProvider()
+        return Metered(AnthropicProvider())
     if kind == "openai":
         from app.agent.providers.openai_provider import OpenAIProvider
-        return OpenAIProvider()
+        return Metered(OpenAIProvider())
     raise ValueError(f"Unknown LLM_PROVIDER={kind!r} (mock | anthropic | openai)")
