@@ -1,13 +1,16 @@
 ""
 import json
 import uuid
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 from app import budget, config, defects, session_ctx
 from app.agent import language, pricing, prompt, router, summarize, tools
 from app.agent.providers.base import get_provider
 from app.tracing import RequestTrace
 
-_sessions: dict[str, dict] = {}
+_sessions: dict[tuple[str, str], dict] = {}
+_owner: ContextVar[str] = ContextVar("session_owner", default="")
 
 _EMPTY_RETRY_LIMIT = 8
 
@@ -23,12 +26,25 @@ def _is_empty_result(result: dict) -> bool:
 
 def _session(session_id: str | None) -> tuple[str, dict]:
     sid = session_id or uuid.uuid4().hex[:12]
-    state = _sessions.setdefault(sid, {"messages": [], "steps": 0})
+    state = _sessions.setdefault((_owner.get(), sid), {"messages": [], "steps": 0})
     return sid, state
 
 
-def reset_sessions() -> None:
-    _sessions.clear()
+@contextmanager
+def owned_by(owner: str):
+    token = _owner.set(owner)
+    try:
+        yield
+    finally:
+        _owner.reset(token)
+
+
+def reset_sessions(owner: str | None = None) -> None:
+    if owner is None:
+        _sessions.clear()
+        return
+    for k in [k for k in _sessions if k[0] == owner]:
+        del _sessions[k]
 
 
 def _messages_for_model(state: dict) -> list[dict]:

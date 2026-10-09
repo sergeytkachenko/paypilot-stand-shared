@@ -8,7 +8,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
-from app import answers, budget, clock, config, db, defects, otel, runctx, tracing
+from app import answers, budget, clock, config, db, defects, otel, runctx, tracing, workspace
 from app.agent import explain, loop, pricing, prompt, router, summarize, tools
 from app.engines import reference
 
@@ -25,7 +25,8 @@ LOCKED_DETAIL = (
     "Це спільний стенд: серверні PUT і скидання бази закриті. Профіль, дефекти, "
     f"top_k, індекс, годинник і згортку задавайте заголовком {runctx.HEADER} "
     "(панель чату робить це сама); чат, clean vs профіль і ×5 працюють без нього. "
-    "Скрипти з PUT, eval-прогони і скидання бази — на власному стенді. "
+    f"З ключем студента ({budget.HEADER}) ці дії діють лише для вашого ключа: "
+    "своя база, свій профіль, свої сесії. "
     f"Лектор відкриває серверні дії заголовком {runctx.ADMIN_HEADER}.")
 
 
@@ -33,25 +34,37 @@ LOCKED_DETAIL = (
 async def request_settings(request: Request, call_next):
     raw = request.headers.get(runctx.HEADER)
     try:
-        settings = runctx.parse_header(raw) if raw else runctx.RunSettings()
+        header = runctx.parse_header(raw) if raw else runctx.RunSettings()
     except ValueError as e:
         return JSONResponse({"detail": str(e)}, status_code=400)
-    token = runctx.activate(settings)
-    try:
-        if not needs_key(request):
-            return await call_next(request)
-        key = budget.resolve(request.headers.get(budget.HEADER))
-        if key is None:
+    key = None
+    if config.STAND_KEYS_REQUIRED and not is_admin(request):
+        raw_key = request.headers.get(budget.HEADER)
+        if raw_key:
+            key = budget.resolve(raw_key)
+            if key is None:
+                return JSONResponse({"detail": MISSING_KEY_DETAIL}, status_code=401)
+        elif is_spending(request):
             return JSONResponse({"detail": MISSING_KEY_DETAIL}, status_code=401)
+    if key is None:
+        token = runctx.activate(header)
         try:
+            return await call_next(request)
+        finally:
+            runctx.deactivate(token)
+    token = runctx.activate(workspace.effective(key, header), workspace.layer_for(header))
+    try:
+        with workspace.bind(key, header):
+            if not is_spending(request):
+                return await call_next(request)
             budget.check(key)
             with budget.bind(key, request.url.path):
                 return await call_next(request)
-        except budget.BudgetExceeded as e:
-            return JSONResponse({"detail": str(e), "window": e.window,
-                                 "budget": e.report}, status_code=429)
-        except budget.KeyBusy as e:
-            return JSONResponse({"detail": str(e)}, status_code=429)
+    except budget.BudgetExceeded as e:
+        return JSONResponse({"detail": str(e), "window": e.window,
+                             "budget": e.report}, status_code=429)
+    except budget.KeyBusy as e:
+        return JSONResponse({"detail": str(e)}, status_code=429)
     finally:
         runctx.deactivate(token)
 
@@ -65,10 +78,8 @@ MISSING_KEY_DETAIL = (
     "теж дає 401.")
 
 
-def needs_key(request: Request) -> bool:
-    return (config.STAND_KEYS_REQUIRED and request.method == "POST"
-            and request.url.path.rstrip("/") in SPENDING_PATHS
-            and not is_admin(request))
+def is_spending(request: Request) -> bool:
+    return request.method == "POST" and request.url.path.rstrip("/") in SPENDING_PATHS
 
 
 def is_admin(request: Request) -> bool:
@@ -77,9 +88,13 @@ def is_admin(request: Request) -> bool:
         supplied.encode(), config.STAND_ADMIN_TOKEN.encode())
 
 
-def require_server_write(request: Request) -> None:
+def require_server_write(request: Request) -> budget.Key | None:
+    key = workspace.active()
+    if key is not None:
+        return key
     if config.STAND_LOCK_GLOBAL and not is_admin(request):
         raise HTTPException(403, LOCKED_DETAIL)
+    return None
 
 
 @app.get("/", include_in_schema=False)
@@ -320,6 +335,9 @@ def health(request: Request):
             "request_settings": runctx.current().as_dict(),
             "locked": config.STAND_LOCK_GLOBAL,
             "keys_required": config.STAND_KEYS_REQUIRED,
+            "key": workspace.active().prefix if workspace.active() else None,
+            "key_settings": (workspace.settings(workspace.active()).as_dict()
+                             if workspace.active() else None),
             "admin": is_admin(request)}
 
 
@@ -349,8 +367,14 @@ class ProfileIn(BaseModel):
     profile: str | None = None
 
 
-@app.put("/api/_test/profile", dependencies=[Depends(require_server_write)])
-def test_set_profile(body: ProfileIn):
+@app.put("/api/_test/profile")
+def test_set_profile(body: ProfileIn, key: budget.Key | None = Depends(require_server_write)):
+    if key is not None:
+        if body.profile is not None and body.profile not in defects.PROFILES:
+            raise HTTPException(400, f"Unknown profile {body.profile!r}. "
+                                     f"Known: {sorted(defects.PROFILES)}")
+        with workspace.write(key, profile=body.profile):
+            return defects.describe()
     try:
         defects.set_runtime_profile(body.profile)
     except ValueError as e:
@@ -362,8 +386,16 @@ class DefectsIn(BaseModel):
     defects: str | None = None
 
 
-@app.put("/api/_test/defects", dependencies=[Depends(require_server_write)])
-def test_set_defects(body: DefectsIn):
+@app.put("/api/_test/defects")
+def test_set_defects(body: DefectsIn, key: budget.Key | None = Depends(require_server_write)):
+    if key is not None:
+        try:
+            if body.defects is not None:
+                defects._parse_list(body.defects)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        with workspace.write(key, defects=body.defects):
+            return defects.describe()
     try:
         defects.set_runtime_defects(body.defects)
     except ValueError as e:
@@ -402,9 +434,18 @@ class ClockIn(BaseModel):
     now: str | None = None
 
 
-@app.post("/api/_test/clock", dependencies=[Depends(require_server_write)])
-@app.put("/api/_test/clock", dependencies=[Depends(require_server_write)])
-def test_set_clock(body: ClockIn):
+@app.post("/api/_test/clock")
+@app.put("/api/_test/clock")
+def test_set_clock(body: ClockIn, key: budget.Key | None = Depends(require_server_write)):
+    if key is not None:
+        value = body.now or None
+        try:
+            if value is not None:
+                clock._parse(value)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        with workspace.write(key, clock=value):
+            return clock.describe()
     try:
         clock.set_override(body.now)
     except ValueError as e:
@@ -428,17 +469,35 @@ class RetrievalIn(BaseModel):
     index: str | None = None
 
 
-@app.put("/api/_test/retrieval", dependencies=[Depends(require_server_write)])
-def test_set_retrieval(body: RetrievalIn):
+def _retrieval_state() -> dict:
+    from app.rag import retriever
+    return {"index": retriever.active_index_name(),
+            "top_k": retriever.active_top_k(),
+            "requested_index": retriever.requested_index(),
+            "requested_top_k": retriever.requested_top_k(),
+            "index_env": config.KB_INDEX_ENV, "rag_top_k": config.RAG_TOP_K,
+            "scope": runctx.scope()}
+
+
+@app.put("/api/_test/retrieval")
+def test_set_retrieval(body: RetrievalIn, key: budget.Key | None = Depends(require_server_write)):
     ""
     from app.rag import retriever
+    if body.top_k is not None and not 1 <= body.top_k <= 20:
+        raise HTTPException(400, "top_k must be between 1 and 20")
+    if body.index is not None and body.index not in ("kb_clean", "kb_broken", ""):
+        raise HTTPException(400, "index must be kb_clean, kb_broken or \"\"")
+    if key is not None:
+        changes = {}
+        if body.top_k is not None:
+            changes["top_k"] = body.top_k
+        if body.index is not None:
+            changes["index"] = body.index or None
+        with workspace.write(key, **changes):
+            return _retrieval_state()
     if body.top_k is not None:
-        if not 1 <= body.top_k <= 20:
-            raise HTTPException(400, "top_k must be between 1 and 20")
         config.RAG_TOP_K = body.top_k
     if body.index is not None:
-        if body.index not in ("kb_clean", "kb_broken", ""):
-            raise HTTPException(400, "index must be kb_clean, kb_broken or \"\"")
         config.KB_INDEX_ENV = body.index
     return {"index": retriever.active_index_name(),
             "top_k": retriever.active_top_k(),
@@ -458,18 +517,26 @@ class SummarizeIn(BaseModel):
     steps: int
 
 
-@app.put("/api/_test/summarize_after", dependencies=[Depends(require_server_write)])
-def test_set_summarize_after(body: SummarizeIn):
+@app.put("/api/_test/summarize_after")
+def test_set_summarize_after(body: SummarizeIn,
+                             key: budget.Key | None = Depends(require_server_write)):
     ""
     if body.steps < 1:
         raise HTTPException(400, "steps must be >= 1")
+    if key is not None:
+        with workspace.write(key, summarize_after=body.steps):
+            return {"summarize_after_steps": summarize.summarize_after_steps(),
+                    "scope": runctx.scope()}
     config.SUMMARIZE_AFTER_STEPS = body.steps
     return {"summarize_after_steps": summarize.summarize_after_steps(),
             "scope": runctx.scope()}
 
 
-@app.post("/api/_test/reset", dependencies=[Depends(require_server_write)])
-def test_reset():
+@app.post("/api/_test/reset")
+def test_reset(key: budget.Key | None = Depends(require_server_write)):
+    if key is not None:
+        return {"status": "reset", "scope": "key", "key": key.prefix,
+                **workspace.reset(key)}
     info = db.reset()
     loop.reset_sessions()
     return {"status": "reset", **info}

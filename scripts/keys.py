@@ -1,5 +1,6 @@
 import argparse
 import csv
+import json
 import sys
 from pathlib import Path
 
@@ -7,7 +8,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from app import budget  # noqa: E402
+from app import budget, workspace  # noqa: E402
 
 
 def cmd_create(args) -> int:
@@ -33,19 +34,23 @@ def cmd_create(args) -> int:
 def cmd_list(args) -> int:
     out = csv.writer(sys.stdout)
     out.writerow(["prefix", "label", "revoked", "spent_24h_usd", "daily_usd",
-                  "spent_30d_usd", "monthly_usd"])
+                  "spent_30d_usd", "monthly_usd", "has_db", "settings"])
     for key in budget.all_keys():
         u = budget.usage(key)
         out.writerow([key.prefix, key.label, int(key.revoked),
                       u["day"]["spent_usd"], key.daily_usd,
-                      u["month"]["spent_usd"], key.monthly_usd])
+                      u["month"]["spent_usd"], key.monthly_usd,
+                      int(workspace.db_path(key).exists()),
+                      json.dumps(workspace.settings(key).as_dict(), ensure_ascii=False)])
     return 0
 
 
 def cmd_revoke(args) -> int:
     key = budget.find(args.prefix)
     budget.revoke(key)
-    print(f"Відкликано {key.prefix} ({key.label})")
+    dropped = workspace.drop(key)
+    print(f"Відкликано {key.prefix} ({key.label})"
+          + ("; базу ключа видалено" if dropped else ""))
     return 0
 
 
