@@ -459,6 +459,7 @@
       <button class="mi" role="menuitem" onclick="closePops();openAdvanced()"><span><span data-i18n="advanced"></span><small data-i18n="advancedSub"></small></span><span class="badge" id="advBadge" hidden></span></button>
       <button class="mi" role="menuitem" onclick="closePops();openCustomers()"><span><span data-i18n="customersLink"></span><small data-i18n="customersSub"></small></span></button>
       <button class="mi" role="menuitem" onclick="closePops();openReference(lastCompareTier || customerTier())"><span><span data-i18n="reference"></span><small data-i18n="referenceSub"></small></span></button>
+      <a class="mi" role="menuitem" href="/glossary.pdf" target="_blank" rel="noopener"><span><span data-i18n="glossaryLink"></span><small data-i18n="glossarySub"></small></span><span class="caret">↗</span></a>
       <div class="msep"></div>
       <button class="mi" role="menuitem" id="lectItem" hidden onclick="closePops();togglePop('lectPop', $('menuBtn'))"><span data-i18n="lecturer"></span><span class="badge" id="lectBadge" hidden></span></button>
       <a class="mi" role="menuitem" href="/docs" target="_blank" rel="noopener"><span data-i18n="apiLink"></span><span class="caret">↗</span></a>
@@ -671,7 +672,7 @@ const I18N = {
     vBothShort: 'Розійшлися і текст, і результати інструментів.',
     vUnknown: 'Результати інструментів звірити не вдалося; текст {t}.', vTextDiff: 'відрізняється', vTextSame: 'однаковий',
     vInputs: 'У вході відрізняється: {d}.', vPromptSame: 'Промпт однаковий, тож {d} — не в промпті: дивіться на інструменти і стан бази.',
-    runX5: 'Запустити ×5', x5Cap: '5 разів на clean і 5 на {p}, кожен прогін — нова сесія: як часто що', x5CapSingle: '5 разів на цьому профілі, кожен прогін — нова сесія: власна похибка моделі', referenceSub: 'еталонні значення рушіїв банку', doubt: 'Сумніваєтесь?', repeat5: 'Повторити 5 разів',
+    runX5: 'Запустити ×5', x5Cap: '5 разів на clean і 5 на {p}, кожен прогін — нова сесія: як часто що', x5CapSingle: '5 разів на цьому профілі, кожен прогін — нова сесія: власна похибка моделі', referenceSub: 'еталонні значення рушіїв банку', glossaryLink: 'Словник термінів', glossarySub: 'PDF, L01–L03, остання версія', doubt: 'Сумніваєтесь?', repeat5: 'Повторити 5 разів',
     highlight: 'Підсвітити різницю', legendDel: 'лише ліворуч', legendAdd: 'лише праворуч',
     hlSkipped: 'підсвітка вимкнена: відповідь довша за {n} слів',
     whatDiffered: 'Що відрізнялося', diffChecking: 'порівнюю результати інструментів…',
@@ -802,7 +803,7 @@ const I18N = {
     vBothShort: 'Both the text and the tool results differ.',
     vUnknown: 'Couldn’t compare the tool results; the text {t}.', vTextDiff: 'differs', vTextSame: 'is the same',
     vInputs: 'Inputs differ in: {d}.', vPromptSame: 'The prompt is the same, so {d} is not in the prompt: look at the tools and database state.',
-    runX5: 'Run ×5', x5Cap: '5 runs on clean and 5 on {p}, each a new session: how often', x5CapSingle: '5 runs on this profile, each a new session: the model’s own error', referenceSub: 'reference values from the bank engines', doubt: 'Not sure?', repeat5: 'Repeat 5 times',
+    runX5: 'Run ×5', x5Cap: '5 runs on clean and 5 on {p}, each a new session: how often', x5CapSingle: '5 runs on this profile, each a new session: the model’s own error', referenceSub: 'reference values from the bank engines', glossaryLink: 'Glossary', glossarySub: 'PDF, L01–L03, latest version', doubt: 'Not sure?', repeat5: 'Repeat 5 times',
     highlight: 'Highlight differences', legendDel: 'left only', legendAdd: 'right only',
     hlSkipped: 'highlighting off: the answer is longer than {n} words',
     whatDiffered: 'What differed', diffChecking: 'comparing tool results…',
