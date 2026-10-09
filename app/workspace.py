@@ -36,6 +36,14 @@ def _lock_for(key: budget.Key) -> threading.Lock:
         return _locks.setdefault(key.id, threading.Lock())
 
 
+_settings_locks: dict[int, threading.Lock] = {}
+
+
+def _settings_lock_for(key: budget.Key) -> threading.Lock:
+    with _locks_guard:
+        return _settings_locks.setdefault(key.id, threading.Lock())
+
+
 def owner(key: budget.Key) -> str:
     return f"key-{key.id}"
 
@@ -59,15 +67,16 @@ def settings(key: budget.Key) -> runctx.RunSettings:
 
 
 def update(key: budget.Key, **changes) -> runctx.RunSettings:
-    new = replace(settings(key), **changes)
-    conn = _connect()
-    try:
-        conn.execute("INSERT INTO key_settings (key_id, settings) VALUES (?, ?) "
-                     "ON CONFLICT(key_id) DO UPDATE SET settings = excluded.settings",
-                     (key.id, json.dumps(new.as_dict())))
-        conn.commit()
-    finally:
-        conn.close()
+    with _settings_lock_for(key):
+        new = replace(settings(key), **changes)
+        conn = _connect()
+        try:
+            conn.execute("INSERT INTO key_settings (key_id, settings) VALUES (?, ?) "
+                         "ON CONFLICT(key_id) DO UPDATE SET settings = excluded.settings",
+                         (key.id, json.dumps(new.as_dict())))
+            conn.commit()
+        finally:
+            conn.close()
     return new
 
 

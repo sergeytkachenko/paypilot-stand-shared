@@ -32,11 +32,6 @@ LOCKED_DETAIL = (
 
 @app.middleware("http")
 async def request_settings(request: Request, call_next):
-    raw = request.headers.get(runctx.HEADER)
-    try:
-        header = runctx.parse_header(raw) if raw else runctx.RunSettings()
-    except ValueError as e:
-        return JSONResponse({"detail": str(e)}, status_code=400)
     key = None
     if config.STAND_KEYS_REQUIRED and not is_admin(request):
         raw_key = request.headers.get(budget.HEADER)
@@ -46,6 +41,11 @@ async def request_settings(request: Request, call_next):
                 return JSONResponse({"detail": MISSING_KEY_DETAIL}, status_code=401)
         elif is_spending(request):
             return JSONResponse({"detail": MISSING_KEY_DETAIL}, status_code=401)
+    raw = request.headers.get(runctx.HEADER)
+    try:
+        header = runctx.parse_header(raw) if raw else runctx.RunSettings()
+    except ValueError as e:
+        return JSONResponse({"detail": str(e)}, status_code=400)
     if key is None:
         token = runctx.activate(header)
         try:

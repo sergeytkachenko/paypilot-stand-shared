@@ -157,6 +157,27 @@ def test_invalid_key_is_401_even_on_reads():
     assert client.get("/health").status_code == 200
 
 
+def test_invalid_key_wins_over_a_malformed_settings_header():
+    r = client.get("/health", headers={budget.HEADER: "psk_nope",
+                                       "X-Stand-Settings": "{bad"})
+    assert r.status_code == 401
+
+
+def test_concurrent_writes_of_one_key_keep_every_field(a):
+    key = budget.resolve(a[budget.HEADER])
+    fields_to_set = [{"profile": "lesson-04"}, {"defects": "D16"}, {"top_k": 3},
+                     {"summarize_after": 2}, {"clock": "2026-01-01T00:00:00Z"}]
+    threads = [threading.Thread(target=workspace.update, args=(key,), kwargs=f)
+               for f in fields_to_set * 4]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    stored = workspace.settings(key).as_dict()
+    for f in fields_to_set:
+        assert stored.items() >= f.items()
+
+
 def test_health_shows_only_the_callers_key(a):
     client.put("/api/_test/profile", json={"profile": "lesson-04"}, headers=a)
     mine = client.get("/health", headers=a).json()
