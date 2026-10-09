@@ -14,7 +14,7 @@ def _temperature() -> dict:
     return {"temperature": config.LLM_TEMPERATURE}
 
 API_URL = "https://api.anthropic.com/v1/messages"
-DEFAULT_MODEL = "claude-haiku-4-5"
+DEFAULT_MODEL = "claude-haiku-5-5"
 _RETRY_STATUS = {429, 500, 502, 503, 529}
 
 

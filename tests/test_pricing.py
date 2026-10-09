@@ -28,3 +28,13 @@ def test_haiku_55_short_and_long_prompt_tiers():
     assert pricing.cost_usd("claude-haiku-5-5", 5266, 110) == 0.000582
     assert pricing.cost_usd("claude-haiku-5-5", 100_000, 0) == 0.01
     assert pricing.cost_usd("claude-haiku-5-5", 100_001, 1000) == round((100_001 * 0.5 + 1000 * 2.5) / 1_000_000, 6)
+
+
+def test_anthropic_default_model_is_haiku_5_5_and_priced(monkeypatch):
+    from app import config
+    from app.agent.providers import anthropic_provider
+    monkeypatch.setattr(config, "ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setattr(config, "LLM_MODEL", "")
+    model = anthropic_provider.AnthropicProvider().model
+    assert model == "claude-haiku-5-5"
+    assert pricing.price_key(model) == "claude-haiku-5-5"
