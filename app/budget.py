@@ -1,4 +1,5 @@
 import hashlib
+import math
 import os
 import secrets
 import sqlite3
@@ -70,11 +71,18 @@ def _hash(raw: str) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
+def _limit(name: str, value: float | None) -> float | None:
+    if value is not None and not (math.isfinite(value) and value >= 0):
+        raise ValueError(f"{name} must be a finite number >= 0, got {value!r}")
+    return value
+
+
 def create(label: str, daily_usd: float | None = None,
            monthly_usd: float | None = None) -> tuple[Key, str]:
     raw = KEY_PREFIX + secrets.token_urlsafe(24)
-    daily = config.STAND_KEY_DAILY_USD if daily_usd is None else daily_usd
-    monthly = config.STAND_KEY_MONTHLY_USD if monthly_usd is None else monthly_usd
+    daily = _limit("daily_usd", config.STAND_KEY_DAILY_USD if daily_usd is None else daily_usd)
+    monthly = _limit("monthly_usd",
+                     config.STAND_KEY_MONTHLY_USD if monthly_usd is None else monthly_usd)
     conn = connect()
     try:
         cur = conn.execute(
@@ -130,6 +138,8 @@ def revoke(key: Key) -> None:
 
 
 def set_limits(key: Key, daily_usd: float | None, monthly_usd: float | None) -> Key:
+    _limit("daily_usd", daily_usd)
+    _limit("monthly_usd", monthly_usd)
     conn = connect()
     try:
         conn.execute("UPDATE keys SET daily_usd = COALESCE(?, daily_usd), "

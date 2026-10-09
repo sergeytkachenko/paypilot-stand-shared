@@ -155,6 +155,15 @@ def test_per_key_limits_override_the_defaults(keys_on, student):
     assert client.post("/chat", json=ASK, headers=headers).status_code == 200
 
 
+def test_limits_must_be_finite_and_non_negative(student):
+    key, _ = student
+    for bad in (float("inf"), float("nan"), -1.0):
+        with pytest.raises(ValueError):
+            budget.set_limits(key, bad, None)
+        with pytest.raises(ValueError):
+            budget.create("x", None, bad)
+
+
 def test_a_key_runs_one_spending_request_at_a_time(student):
     key, _ = student
     with budget.bind(key, "/chat"):
