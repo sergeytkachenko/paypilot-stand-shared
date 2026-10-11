@@ -38,12 +38,19 @@ def _to_openai(system: str, messages: list[dict]) -> list[dict]:
 
 class OpenAIProvider(Provider):
     name = "openai"
+    api_url = API_URL
+    key_setting = "OPENAI_API_KEY"
+    default_model = DEFAULT_MODEL
     timeout = 60
 
     def __init__(self):
-        if not config.OPENAI_API_KEY:
-            raise RuntimeError("OPENAI_API_KEY is not set")
-        self.model = config.LLM_MODEL or DEFAULT_MODEL
+        self.api_key = getattr(config, self.key_setting)
+        if not self.api_key:
+            raise RuntimeError(f"{self.key_setting} is not set")
+        self.model = config.LLM_MODEL or self.default_model
+
+    def _headers(self) -> dict:
+        return {"Authorization": f"Bearer {self.api_key}"}
 
     def complete(self, system, messages, tools):
         payload = {
@@ -55,8 +62,8 @@ class OpenAIProvider(Provider):
             payload["tools"] = [{"type": "function", "function": {
                 "name": t["name"], "description": t["description"],
                 "parameters": t["input_schema"]}} for t in tools]
-        resp = httpx.post(API_URL, json=payload, timeout=self.timeout, headers={
-            "Authorization": f"Bearer {config.OPENAI_API_KEY}"})
+        resp = httpx.post(self.api_url, json=payload, timeout=self.timeout,
+                          headers=self._headers())
         resp.raise_for_status()
         data = resp.json()
         msg = data["choices"][0]["message"]

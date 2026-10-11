@@ -22,6 +22,7 @@ services:
       - TYPESAFE_MODEL=${TYPESAFE_MODEL:-jev-latest}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       # loop knobs: without these the container ignored .env and the
       # memory lesson was unreachable inside compose
       - MAX_AGENT_STEPS=${MAX_AGENT_STEPS:-12}

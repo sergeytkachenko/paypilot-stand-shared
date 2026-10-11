@@ -43,7 +43,7 @@ def main() -> int:
     if provider == "mock":
         check("llm provider", WARN,
               "mock — free and deterministic, but probabilistic defects need "
-              "a live provider; set LLM_PROVIDER=anthropic|openai")
+              "a live provider; set LLM_PROVIDER=anthropic|openai|openrouter")
     elif provider == "anthropic":
         key = os.environ.get("ANTHROPIC_API_KEY", "")
         check("llm provider", OK if key else FAIL,
@@ -56,9 +56,16 @@ def main() -> int:
               "openai" if key else "OPENAI_API_KEY is empty")
         if key:
             _probe_openai(key)
+    elif provider == "openrouter":
+        key = os.environ.get("OPENROUTER_API_KEY", "")
+        check("llm provider", OK if key else FAIL,
+              "openrouter" if key else "OPENROUTER_API_KEY is empty")
+        if key:
+            _probe_openrouter(key)
     else:
         check("llm provider", FAIL,
-              f"unknown LLM_PROVIDER={provider!r} (mock | anthropic | openai)")
+              f"unknown LLM_PROVIDER={provider!r} "
+              "(mock | anthropic | openai | openrouter)")
 
     endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "")
     if endpoint:
@@ -169,6 +176,18 @@ def _probe_openai(key: str):
               f"HTTP {r.status_code}")
     except Exception as e:
         check("openai api reachable", FAIL, str(e))
+
+
+def _probe_openrouter(key: str):
+    try:
+        import httpx
+        r = httpx.get("https://openrouter.ai/api/v1/key",
+                      headers={"Authorization": f"Bearer {key}"}, timeout=15)
+        hint = " — the key is invalid or revoked" if r.status_code == 401 else ""
+        check("openrouter api reachable", OK if r.status_code == 200 else FAIL,
+              f"HTTP {r.status_code}{hint}")
+    except Exception as e:
+        check("openrouter api reachable", FAIL, str(e))
 
 
 if __name__ == "__main__":

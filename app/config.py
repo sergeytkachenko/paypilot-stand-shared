@@ -57,6 +57,7 @@ TYPESAFE_API_KEY = os.environ.get("TYPESAFE_API_KEY", "")
 TYPESAFE_MODEL = os.environ.get("TYPESAFE_MODEL", "jev-latest")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 
 MAX_AGENT_STEPS = int(os.environ.get("MAX_AGENT_STEPS", "12"))
 SUMMARIZE_AFTER_STEPS = int(os.environ.get("SUMMARIZE_AFTER_STEPS", "8"))

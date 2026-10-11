@@ -45,7 +45,7 @@ agent.request                     ← корінь, один на хід діа�
 | `run.profile` | активний профіль на момент ходу |
 | `run.active_defects` | список активних дефектів |
 | `prompt.version` | версія промпту, з накладеними оверлеями |
-| `llm.provider` | `mock` / `anthropic` / `openai` |
+| `llm.provider` | `mock` / `anthropic` / `openai` / `openrouter` |
 | `context.replay_active` | `true`, коли до контексту домішується історія |
 | `gen_ai.usage.total_input_tokens` / `...output_tokens` | сумарні токени ходу |
 
