@@ -1,8 +1,7 @@
 # Payment dispute rules
 
 ## Reason codes and chargeback windows
-Each dispute reason code has its own window, counted in days from the
-transaction date. A dispute opened after the window closes is not eligible.
+Each reason code has a window in days from the transaction date. A dispute opened after the window closes is not eligible.
 
 | Reason code | Window (days) |
 |---|---|
