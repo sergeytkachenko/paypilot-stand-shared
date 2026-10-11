@@ -246,3 +246,23 @@ def test_ui_sends_the_student_key():
     ui = (config.ROOT / "app" / "static" / "index.html").read_text(encoding="utf-8")
     assert "h['X-Stand-Key'] = studentKey" in ui
     assert "api('/api/_test/budget')" in ui
+
+
+def test_revoked_key_gives_401_even_on_health(keys_on, student):
+    key, headers = student
+    assert client.get("/health", headers=headers).status_code == 200
+    budget.revoke(key)
+    assert client.get("/health", headers=headers).status_code == 401
+
+
+def test_ui_drops_a_rejected_saved_key_and_reloads_without_it():
+    ui = (config.ROOT / "app" / "static" / "index.html").read_text(encoding="utf-8")
+    start = ui.index("async function refreshState(){")
+    catch_block = ui[start:ui.index("fail(e);", start)]
+    assert "if(recoverKey(e)) return refreshState();" in catch_block
+    body = ui[ui.index("function recoverKey(e){"):]
+    body = body[:body.index("\n}\n")]
+    assert "e.status !== 401 || !studentKey" in body
+    assert "writeStore(STUDENT_KEY, null)" in body
+    assert "keyDropped" in body
+    assert ui.count("keyDropped:") == 2

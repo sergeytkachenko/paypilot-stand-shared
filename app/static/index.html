@@ -681,6 +681,7 @@ const I18N = {
     brokenIdx: 'Профіль заняття задає індекс kb_broken; оберіть kb_clean явно, якщо треба порівняти',
     sumBad: 'Вкажіть номер кроку, після якого згортати (>= 1)', needText: 'Спершу напишіть питання.',
     recovered: 'Збережені налаштування стенд відхилив ({m}) — скинуто до типових.',
+    keyDropped: 'Збережений ключ стенд не прийняв: його відкликано або він чужий. Ключ прибрано — вставте новий у «Меню» → «Ключ студента».',
     tokenOk: 'Токен лектора прийнято: серверні дії відкриті.', tokenBad: 'Токен не підійшов.',
     stateReset: 'Стан скинуто до seed {v}: {c} клієнтів, {a} рахунків, {t} транзакцій.',
     oneTurn: 'один хід · нові сесії · {t}', reference: 'Як має бути', copyEvidence: 'Копіювати доказ',
@@ -816,6 +817,7 @@ const I18N = {
     brokenIdx: 'The lesson profile sets index kb_broken; choose kb_clean explicitly to compare',
     sumBad: 'Enter the step after which to fold (>= 1)', needText: 'Type a question first.',
     recovered: 'The stand rejected the saved settings ({m}) — reset to defaults.',
+    keyDropped: 'The stand rejected the saved key: it was revoked or belongs to someone else. The key was removed — paste a new one in “Menu” → “Student key”.',
     tokenOk: 'Lecturer token accepted: server actions are open.', tokenBad: 'The token didn’t match.',
     stateReset: 'State reset to seed {v}: {c} customers, {a} accounts, {t} transactions.',
     oneTurn: 'one turn · fresh sessions · {t}', reference: 'What’s correct', copyEvidence: 'Copy evidence',
@@ -978,6 +980,13 @@ function recoverSettings(message){
   settings = {};
   saveSettings();
   addMsg(t('recovered', {m: message}), 'err');
+  return true;
+}
+function recoverKey(e){
+  if(e.status !== 401 || !studentKey) return false;
+  studentKey = '';
+  writeStore(STUDENT_KEY, null);
+  addMsg(t('keyDropped'), 'err');
   return true;
 }
 function settingsHeaders(){
@@ -2172,6 +2181,7 @@ async function refreshState(){
       api('/api/_test/summarize_after'), api('/api/_test/retrieval')]);
   }catch(e){
     if(recoverSettings(e.message)) return refreshState();
+    if(recoverKey(e)) return refreshState();
     fail(e);
     return;
   }
