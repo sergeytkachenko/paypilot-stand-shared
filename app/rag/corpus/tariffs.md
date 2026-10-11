@@ -1,9 +1,9 @@
 # Verta tariff schedule
 
 ## Account tiers
-Verta offers three account tiers: Tier 1, Tier 2 and Tier 3. Tiers
-determine the FX spread, the free monthly conversion allowance and the
-transfer limits.
+Verta offers three account tiers: Tier 1, Tier 2 and Tier 3. The tier of
+each account sets its pricing as well as its daily and per-month transfer
+limits.
 
 ## FX spreads by tier
 The spread is applied over the mid-market rate only after the free monthly

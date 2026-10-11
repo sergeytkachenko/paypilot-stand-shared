@@ -14,6 +14,12 @@ C14_WIDE_QUERIES = (
     "reason codes list chargeback window duplicate charge unauthorized debit",
     "dispute window table reason code duplicate_charge service_not_rendered",
 )
+EX1_QUERIES = (
+    "FX spread by customer tier and free monthly currency conversion allowance",
+    "FX spread and free monthly currency conversion allowance by customer tier",
+    "FX spread and free monthly currency conversion allowance by account tier",
+    "FX spread free monthly currency conversion allowance by tier",
+)
 C13_QUERIES = (
     "FX spread table by tier",
     "Tier 3 free monthly conversion allowance EUR",
@@ -45,6 +51,11 @@ def test_more_fragments_never_bring_the_tier_3_continuation():
         ids = _ids(query, 5)
         assert ids[0] == "tariffs.md#b3", query
         assert "tariffs.md#b4" not in ids, query
+
+
+def test_exercise_1_query_brings_the_cut_table_not_the_intro():
+    for query in EX1_QUERIES:
+        assert _ids(query, 1) == ["tariffs.md#b3"], query
 
 
 def test_duplicate_charge_row_is_whole_next_to_its_header():
