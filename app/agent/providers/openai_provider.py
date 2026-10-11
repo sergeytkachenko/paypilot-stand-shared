@@ -38,6 +38,7 @@ def _to_openai(system: str, messages: list[dict]) -> list[dict]:
 
 class OpenAIProvider(Provider):
     name = "openai"
+    timeout = 60
 
     def __init__(self):
         if not config.OPENAI_API_KEY:
@@ -54,7 +55,7 @@ class OpenAIProvider(Provider):
             payload["tools"] = [{"type": "function", "function": {
                 "name": t["name"], "description": t["description"],
                 "parameters": t["input_schema"]}} for t in tools]
-        resp = httpx.post(API_URL, json=payload, timeout=60, headers={
+        resp = httpx.post(API_URL, json=payload, timeout=self.timeout, headers={
             "Authorization": f"Bearer {config.OPENAI_API_KEY}"})
         resp.raise_for_status()
         data = resp.json()

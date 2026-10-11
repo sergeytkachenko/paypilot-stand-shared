@@ -1,5 +1,6 @@
 ""
 import hmac
+import logging
 import os
 import threading
 from typing import Literal
@@ -12,6 +13,7 @@ from app import answers, budget, clock, config, db, defects, otel, runctx, traci
 from app.agent import explain, loop, pricing, prompt, router, summarize, tools
 from app.engines import reference
 
+log = logging.getLogger("uvicorn.error")
 defects.validate_startup()
 budget.validate_startup()
 db.ensure_seeded()
@@ -316,11 +318,12 @@ def test_series_explain(body: SeriesExplainIn):
                     404, f"trace {run.request_id} not found ({label})")
             collected.append({"tree": tree, "answer": run.answer})
         arms[label] = collected
-    facts = explain.series_facts(body.message, arms)
     try:
-        return explain.explain_series(facts, body.lang)
+        facts = explain.series_facts(body.message, arms)
     except Exception as e:
-        raise HTTPException(502, f"explain model failed: {e}")
+        log.exception("series facts failed")
+        raise HTTPException(500, f"series facts failed: {type(e).__name__}: {e}")
+    return explain.explain_series(facts, body.lang)
 
 
 @app.get("/health")

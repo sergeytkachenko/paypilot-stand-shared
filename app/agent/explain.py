@@ -214,14 +214,18 @@ MOCK_SERIES_LINES = {
            "field": "{tool} {field} — clean: {a}; профіль: {b}",
            "same_prompt": "Промпт обох серій однаковий — причина не в промпті.",
            "diff_prompt": "Промпти серій різні, рядків у diff: {n}.",
-           "no_fields": "Результати інструментів у двох серіях однакові."},
+           "no_fields": "Результати інструментів у двох серіях однакові.",
+           "fallback_headline": "Модель не відповіла — показано зведення фактів. "
+                                "Варіантів відповіді: {n}."},
     "en": {"headline": "mock provider: no model was called, this is a summary "
                        "of the facts. Answer variants: {n}.",
            "field": "{tool} {field} — clean: {a}; profile: {b}",
            "same_prompt": "Both series ran on the same prompt — the cause is "
                           "not in the prompt.",
            "diff_prompt": "The series ran on different prompts, diff lines: {n}.",
-           "no_fields": "Tool results are identical in both series."},
+           "no_fields": "Tool results are identical in both series.",
+           "fallback_headline": "The model did not answer — showing the facts "
+                                "summary. Answer variants: {n}."},
 }
 
 
@@ -413,7 +417,8 @@ def parse_series(text: str, runs: dict, allow_cause: bool = True) -> dict | None
             "rows": rows[:SERIES_ROW_LIMIT]}
 
 
-def _mock_series_explanation(facts: dict, lang: str = "uk") -> dict:
+def _mock_series_explanation(facts: dict, lang: str = "uk",
+                             headline: str = "headline") -> dict:
     text = MOCK_SERIES_LINES.get(lang, MOCK_SERIES_LINES["uk"])
     runs, rows = facts["arms"]["variant"]["runs"], []
     for field in facts["tool_fields"][:3]:
@@ -438,8 +443,24 @@ def _mock_series_explanation(facts: dict, lang: str = "uk") -> dict:
     if not rows:
         rows.append({"kind": "noise", "text": text["no_fields"],
                      "baseline_runs": [], "variant_runs": []})
-    return {"headline": text["headline"].format(n=len(facts["rows"])),
+    return {"headline": text[headline].format(n=len(facts["rows"])),
             "rows": rows[:SERIES_ROW_LIMIT]}
+
+
+SERIES_MAX_TOKENS = 2048
+SERIES_TIMEOUT_SECONDS = 40
+SERIES_ATTEMPTS = 2
+
+
+def _facts_fallback(facts: dict, lang: str, reason: str, detail: str) -> dict:
+    out = _mock_series_explanation(facts, lang, "fallback_headline")
+    out["fallback"] = reason
+    out["fallback_detail"] = _clip(detail, 300)
+    return out
+
+
+def _looks_like_json(text: str) -> bool:
+    return text.startswith(("{", "```")) or '"rows"' in text
 
 
 def explain_series(facts: dict, lang: str = "uk") -> dict:
@@ -451,16 +472,27 @@ def explain_series(facts: dict, lang: str = "uk") -> dict:
     else:
         if config.EXPLAIN_MODEL:
             provider.model = config.EXPLAIN_MODEL
-        resp = provider.complete(series_system_prompt(lang), [{
-            "role": "user", "content": _series_user_message(facts)}], [])
-        text = (resp.text or "").strip()
-        out = parse_series(text, _arm_runs(facts),
-                           facts["prompt_note"] == "different") or {"explanation": text}
-        out["model"] = resp.model
-        out["usage"] = {"input_tokens": resp.input_tokens,
-                        "output_tokens": resp.output_tokens,
-                        "cost_usd": pricing.cost_usd(resp.model, resp.input_tokens,
-                                                     resp.output_tokens)}
+        provider.max_tokens = SERIES_MAX_TOKENS
+        provider.timeout = SERIES_TIMEOUT_SECONDS
+        provider.attempts = SERIES_ATTEMPTS
+        try:
+            resp = provider.complete(series_system_prompt(lang), [{
+                "role": "user", "content": _series_user_message(facts)}], [])
+        except Exception as e:
+            out = _facts_fallback(facts, lang, "model", f"{type(e).__name__}: {e}")
+            out["model"] = getattr(provider, "model", "")
+            resp = None
+        if resp is not None:
+            text = (resp.text or "").strip()
+            out = parse_series(text, _arm_runs(facts), facts["prompt_note"] == "different")
+            if out is None:
+                out = (_facts_fallback(facts, lang, "truncated", text[-200:])
+                       if _looks_like_json(text) else {"explanation": text})
+            out["model"] = resp.model
+            out["usage"] = {"input_tokens": resp.input_tokens,
+                            "output_tokens": resp.output_tokens,
+                            "cost_usd": pricing.cost_usd(resp.model, resp.input_tokens,
+                                                         resp.output_tokens)}
     out["variants"] = len(facts["rows"])
     out["prompt"] = facts["prompt_note"]
     out["elapsed_ms"] = round((time.perf_counter() - started) * 1000, 1)

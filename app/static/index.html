@@ -725,6 +725,9 @@ const I18N = {
     x5Why: 'Пояснити різницю', x5WhyTip: 'Легка модель читає всі {n} прогонів і пояснює, чим {a} відрізняється від {b}',
     x5WhyTitle: 'Пояснення різниці', x5WhyWait: 'легка модель читає {n} прогонів…',
     x5WhyAgain: 'Пояснити ще раз', x5WhyNone: '(модель нічого не відповіла)',
+    x5WhyFallback: 'Легка модель не дала відповіді ({r}), тож нижче — зведення фактів без неї. Можна пояснити ще раз.',
+    x5WhyCut: 'відповідь обрізано', x5WhyErr: 'помилка моделі',
+    errProxy: 'HTTP {s}: проксі не дочекався відповіді стенду. Спробуйте ще раз.',
     x5WhyNote: 'Модель прочитала відповіді, виклики інструментів і різницю промптів. Біля кожного твердження є посилання на прогони — звірте їх, перш ніж копіювати як доказ.',
     x5WhyStable: 'Стабільна різниця', x5WhySometimes: 'Не в кожному прогоні',
     x5WhyNoise: 'Випадковість', x5WhyCause: 'Ймовірна причина',
@@ -857,6 +860,9 @@ const I18N = {
     x5Why: 'Explain the difference', x5WhyTip: 'A light model reads all {n} runs and explains how {a} differs from {b}',
     x5WhyTitle: 'Explanation of the difference', x5WhyWait: 'the light model is reading {n} runs…',
     x5WhyAgain: 'Explain again', x5WhyNone: '(the model returned nothing)',
+    x5WhyFallback: 'The light model gave no answer ({r}), so below is the facts summary without it. You can explain again.',
+    x5WhyCut: 'the answer was cut off', x5WhyErr: 'model error',
+    errProxy: 'HTTP {s}: the proxy did not get an answer from the stand. Try again.',
     x5WhyNote: 'The model read the answers, the tool calls and the prompt diff. Every claim links to the runs behind it — check them before copying this as evidence.',
     x5WhyStable: 'Stable difference', x5WhySometimes: 'Not in every run',
     x5WhyNoise: 'Chance', x5WhyCause: 'Probable cause',
@@ -994,7 +1000,7 @@ async function api(path, opts){
   const r = await fetch(path, opts);
   if(!r.ok){
     const body = await r.text();
-    let msg = body.slice(0,300);
+    let msg = /^\s*</.test(body) ? t('errProxy', {s: r.status}) : body.slice(0,300);
     try{ const j = JSON.parse(body); if(j && j.detail) msg = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail); }catch(_){}
     const err = new Error(msg);
     err.status = r.status;
@@ -1635,7 +1641,12 @@ function renderWhy(box, r, arms, armKeys, again){
     });
     box.appendChild(grid);
   }
-  box.appendChild(el('span', {cls: 'note', text: t('x5WhyNote')}));
+  if(r.fallback){
+    box.appendChild(el('span', {cls: 'note', text: t('x5WhyFallback', {r: t(r.fallback === 'truncated' ? 'x5WhyCut' : 'x5WhyErr')})}));
+    if(r.fallback_detail) box.appendChild(el('span', {cls: 'note mono', text: r.fallback_detail}));
+  }else{
+    box.appendChild(el('span', {cls: 'note', text: t('x5WhyNote')}));
+  }
 }
 
 async function loadWhy(box, message, arms, armKeys){

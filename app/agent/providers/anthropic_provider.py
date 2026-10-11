@@ -18,11 +18,14 @@ DEFAULT_MODEL = "claude-haiku-5-5"
 _RETRY_STATUS = {429, 500, 502, 503, 529}
 
 
-def _post_with_retry(payload: dict, headers: dict, attempts: int = 5):
+def _post_with_retry(payload: dict, headers: dict, attempts: int = 5,
+                     timeout: float = 90):
     delay = 2.0
     last = None
     for i in range(attempts):
-        resp = httpx.post(API_URL, json=payload, timeout=90, headers=headers)
+        resp = httpx.post(API_URL, json=payload, timeout=timeout, headers=headers)
+        if i == attempts - 1:
+            return resp
         if resp.status_code not in _RETRY_STATUS:
             return resp
         last = resp
@@ -53,6 +56,9 @@ def _to_anthropic(messages: list[dict]) -> list[dict]:
 
 class AnthropicProvider(Provider):
     name = "anthropic"
+    max_tokens = 1024
+    timeout = 90
+    attempts = 5
 
     def __init__(self):
         if not config.ANTHROPIC_API_KEY:
@@ -62,7 +68,7 @@ class AnthropicProvider(Provider):
     def complete(self, system, messages, tools):
         payload = {
             "model": self.model,
-            "max_tokens": 1024,
+            "max_tokens": self.max_tokens,
             **_temperature(),
             "system": system,
             "messages": _to_anthropic(messages),
@@ -71,7 +77,7 @@ class AnthropicProvider(Provider):
         }
         resp = _post_with_retry(payload, {
             "x-api-key": config.ANTHROPIC_API_KEY,
-            "anthropic-version": "2023-06-01"})
+            "anthropic-version": "2023-06-01"}, self.attempts, self.timeout)
         if resp.status_code >= 400:
             raise RuntimeError(
                 f"Anthropic {resp.status_code}: {resp.text[:400]}")
