@@ -1,4 +1,6 @@
-from app import config
+import pytest
+
+from app import runctx
 from app.agent import prompt
 from app.rag import retriever
 
@@ -71,9 +73,21 @@ def test_one_fragment_returns_the_intro_and_five_bring_the_window():
         assert "disputes.md#b2" in _ids(query, 5), query
 
 
-def test_d05_plants_a_stale_swift_fee_but_keeps_search_for_everything_else():
-    overlay = " ".join((config.PROMPTS_DIR / "overlays" / f"{prompt.overlay_slug('D05')}.md")
-                       .read_text(encoding="utf-8").split())
-    assert "SWIFT EUR 15.00 flat, no percentage fee" in overlay
-    assert "search the documentation" in overlay
-    assert "from memory" not in overlay
+@pytest.mark.parametrize("profile", ["lesson-04", "lesson-02"])
+def test_d05_plants_a_stale_swift_fee_but_keeps_search_for_everything_else(profile):
+    with runctx.override(profile=profile):
+        system, version = prompt.build()
+    text = " ".join(system.split())
+    assert "D05" in version.split("+")
+    assert "SWIFT EUR 15.00 flat, no percentage fee" in text
+    assert "search the documentation" in text
+    assert "from memory" not in text
+    assert "If a figure (fee, rate, limit, date) is not present" not in text
+
+
+def test_clean_prompt_keeps_the_rule_d05_removes():
+    with runctx.override(profile="clean"):
+        system, version = prompt.build()
+    assert version == "base.v1"
+    assert "If a figure (fee, rate, limit, date) is not present" in " ".join(system.split())
+    assert "SWIFT EUR 15.00" not in system
