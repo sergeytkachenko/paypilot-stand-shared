@@ -50,4 +50,8 @@ def get_provider():
     if kind == "openai":
         from app.agent.providers.openai_provider import OpenAIProvider
         return Metered(OpenAIProvider())
-    raise ValueError(f"Unknown LLM_PROVIDER={kind!r} (mock | anthropic | openai)")
+    if kind == "openrouter":
+        from app.agent.providers.openrouter_provider import OpenRouterProvider
+        return Metered(OpenRouterProvider())
+    raise ValueError(
+        f"Unknown LLM_PROVIDER={kind!r} (mock | anthropic | openai | openrouter)")

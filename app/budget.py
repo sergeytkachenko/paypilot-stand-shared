@@ -277,6 +277,8 @@ def effective_models() -> list[tuple[str, str]]:
         return []
     if config.LLM_PROVIDER == "anthropic":
         from app.agent.providers.anthropic_provider import DEFAULT_MODEL
+    elif config.LLM_PROVIDER == "openrouter":
+        from app.agent.providers.openrouter_provider import DEFAULT_MODEL
     else:
         from app.agent.providers.openai_provider import DEFAULT_MODEL
     out = [("LLM_MODEL", config.LLM_MODEL or DEFAULT_MODEL)]
