@@ -1,0 +1,18 @@
+{{- $name := .Release.Name }}
+{{- range $pvc := list (dict "suffix" "data" "size" .Values.stand.storage.dataSize "class" .Values.stand.storage.storageClass) (dict "suffix" "traces" "size" .Values.stand.storage.tracesSize "class" .Values.stand.storage.storageClass) (dict "suffix" "phoenix" "size" .Values.phoenix.storage.size "class" .Values.phoenix.storage.storageClass) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $name }}-{{ $pvc.suffix }}
+  labels:
+    {{- include "paypilot.labels" $ | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: {{ $pvc.class }}
+  resources:
+    requests:
+      storage: {{ $pvc.size }}
+{{- end }}

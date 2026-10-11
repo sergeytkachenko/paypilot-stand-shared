@@ -1,0 +1,6 @@
+apiVersion: v2
+name: paypilot-stand
+description: PayPilot training stand with Arize Phoenix and an optional Cloudflare tunnel connector
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

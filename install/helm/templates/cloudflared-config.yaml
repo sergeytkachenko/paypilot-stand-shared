@@ -1,0 +1,18 @@
+{{- if .Values.cloudflared.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-cloudflared
+  labels:
+    {{- include "paypilot.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    tunnel: {{ .Values.cloudflared.tunnelId }}
+    credentials-file: /etc/cloudflared/credentials.json
+    ingress:
+      - hostname: {{ .Values.ingress.standHost }}
+        service: http://{{ .Release.Name }}.{{ .Release.Namespace }}.svc.cluster.local:80
+      - hostname: {{ .Values.ingress.tracesHost }}
+        service: http://{{ .Release.Name }}-phoenix.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.phoenix.port }}
+      - service: http_status:404
+{{- end }}

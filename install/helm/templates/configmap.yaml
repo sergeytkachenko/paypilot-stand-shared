@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  labels:
+    {{- include "paypilot.labels" . | nindent 4 }}
+data:
+  PYTHONDONTWRITEBYTECODE: "1"
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ printf "http://%s-phoenix:%v" .Release.Name .Values.phoenix.port | quote }}
+  {{- range $key, $value := .Values.config }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}

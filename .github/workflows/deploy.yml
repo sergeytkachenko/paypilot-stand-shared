@@ -1,0 +1,38 @@
+name: deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy through Jenkins
+    runs-on: ubuntu-latest
+    environment: default
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Load Jenkins credentials from 1Password
+        uses: 1password/load-secrets-action@v2
+        with:
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          JENKINS_URL: op://k3s-infrastructure/jenkins-admin/website
+          JENKINS_USER: op://k3s-infrastructure/jenkins-admin/username
+          JENKINS_TOKEN: op://k3s-infrastructure/jenkins-admin/token
+
+      - name: Run the Jenkins job and wait for its result
+        env:
+          JOB_NAME: paypilot-stand
+        run: ./scripts/jenkins-build.sh

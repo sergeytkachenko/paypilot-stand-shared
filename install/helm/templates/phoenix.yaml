@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-phoenix
+  labels:
+    {{- include "paypilot.labels" . | nindent 4 }}
+    app.kubernetes.io/component: phoenix
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "paypilot.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: phoenix
+  template:
+    metadata:
+      labels:
+        {{- include "paypilot.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: phoenix
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        {{- include "paypilot.podSecurity" . | nindent 8 }}
+      containers:
+        - name: phoenix
+          image: "{{ .Values.phoenix.image.repository }}:{{ .Values.phoenix.image.tag }}"
+          imagePullPolicy: {{ .Values.phoenix.image.pullPolicy }}
+          securityContext:
+            {{- include "paypilot.containerSecurity" . | nindent 12 }}
+          env:
+            - name: PHOENIX_WORKING_DIR
+              value: /phoenix-data
+          ports:
+            - name: http
+              containerPort: {{ .Values.phoenix.port }}
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            failureThreshold: 12
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+            failureThreshold: 6
+          resources:
+            {{- toYaml .Values.phoenix.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /phoenix-data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-phoenix
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-phoenix
+  labels:
+    {{- include "paypilot.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "paypilot.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: phoenix
+  ports:
+    - name: http
+      port: {{ .Values.phoenix.port }}
+      targetPort: http

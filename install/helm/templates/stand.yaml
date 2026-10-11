@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    {{- include "paypilot.labels" . | nindent 4 }}
+    app.kubernetes.io/component: stand
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "paypilot.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: stand
+  template:
+    metadata:
+      labels:
+        {{- include "paypilot.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: stand
+        app.kubernetes.io/version: {{ .Values.image.tag | quote }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        {{- include "paypilot.podSecurity" . | nindent 8 }}
+      containers:
+        - name: stand
+          image: {{ include "paypilot.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- include "paypilot.containerSecurity" . | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-config
+            - secretRef:
+                name: {{ .Values.secretName }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.stand.port }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 15
+            failureThreshold: 4
+          resources:
+            {{- toYaml .Values.stand.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /stand/data
+            - name: traces
+              mountPath: /stand/traces
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-data
+        - name: traces
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-traces
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    {{- include "paypilot.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "paypilot.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: stand
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

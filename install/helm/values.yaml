@@ -1,0 +1,80 @@
+image:
+  repository: docker-registry.docker-registry.svc.cluster.local:5000/paypilot-stand
+  tag: ""
+  pullPolicy: IfNotPresent
+
+podSecurity:
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+
+secretName: paypilot-stand-env
+
+stand:
+  port: 8000
+  resources:
+    requests:
+      cpu: 50m
+      memory: 192Mi
+    limits:
+      memory: 768Mi
+  storage:
+    storageClass: local-path
+    dataSize: 1Gi
+    tracesSize: 1Gi
+
+config:
+  PROFILE: clean
+  DEFECTS: ""
+  CLOCK_OVERRIDE: "2026-09-15T10:00:00Z"
+  LLM_PROVIDER: anthropic
+  LLM_MODEL: claude-haiku-5-5
+  EXPLAIN_MODEL: ""
+  MAX_AGENT_STEPS: "12"
+  SUMMARIZE_AFTER_STEPS: "8"
+  KB_INDEX: ""
+  RAG_TOP_K: "4"
+  STAND_LOCK_GLOBAL: "1"
+  STAND_KEYS_REQUIRED: "1"
+  STAND_KEY_DAILY_USD: "1.0"
+  STAND_KEY_MONTHLY_USD: "5.0"
+  ROUTER: ""
+  ROUTER_PROFILES: clean
+  TYPESAFE_MODEL: jev-latest
+  OTEL_SERVICE_NAME: paypilot-stand
+
+phoenix:
+  image:
+    repository: arizephoenix/phoenix
+    tag: version-20.15.0-nonroot
+    pullPolicy: IfNotPresent
+  port: 6006
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+  storage:
+    storageClass: local-path
+    size: 2Gi
+
+ingress:
+  enabled: true
+  className: traefik
+  standHost: paypilot.xmesh.pl
+  tracesHost: paypilot-traces.xmesh.pl
+
+cloudflared:
+  enabled: true
+  image:
+    repository: cloudflare/cloudflared
+    tag: 2026.7.2
+  tunnelId: 33ee488e-9cb8-4213-81f9-6e4647cc162b
+  secretName: paypilot-stand-tunnel
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 128Mi
