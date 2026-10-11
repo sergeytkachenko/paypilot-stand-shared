@@ -1,6 +1,7 @@
 """Smoke tests over the HTTP surface with the mock provider."""
 import re
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -983,3 +984,60 @@ def test_ui_asks_for_the_series_explanation_from_the_button_handler_only():
         "function seriesVerdict", 1)[0]
     assert "/api/_test/series/explain" in why_body
     assert "innerHTML" not in why_body
+
+
+def _series_probe(monkeypatch, parallel, runs=4):
+    import threading
+    import time
+
+    from app import config, main
+
+    original = main._fresh_run
+    state = {"active": 0, "peak": 0}
+    lock = threading.Lock()
+
+    def probed(message, customer_id):
+        with lock:
+            state["active"] += 1
+            state["peak"] = max(state["peak"], state["active"])
+        time.sleep(0.05)
+        try:
+            return original(message, customer_id)
+        finally:
+            with lock:
+                state["active"] -= 1
+
+    monkeypatch.setattr(config, "SERIES_PARALLEL", parallel)
+    monkeypatch.setattr(main, "_fresh_run", probed)
+    d = _series_on("lesson-04", "What is my balance?", runs=runs)
+    return d, state["peak"]
+
+
+def test_series_runs_one_at_a_time_by_default(monkeypatch):
+    d, peak = _series_probe(monkeypatch, 1)
+    assert peak == 1
+    assert len(d["arms"]["current"]["runs"]) == 4
+
+
+def test_series_runs_in_parallel_and_keeps_each_arm_on_its_own_profile(monkeypatch):
+    d, peak = _series_probe(monkeypatch, 3)
+    assert peak == 3
+    baseline, variant = d["arms"]["profile"], d["arms"]["current"]
+    assert len(baseline["runs"]) == len(variant["runs"]) == 4
+    assert {r["profile"] for r in baseline["runs"]} == {"clean"}
+    assert {r["profile"] for r in variant["runs"]} == {"lesson-04"}
+    assert len({r["request_id"] for r in baseline["runs"] + variant["runs"]}) == 8
+
+
+def test_series_parallel_setting_is_a_positive_integer(monkeypatch):
+    from app import config
+
+    monkeypatch.delenv("SERIES_PARALLEL", raising=False)
+    assert config._positive_int("SERIES_PARALLEL", 1) == 1
+    monkeypatch.setenv("SERIES_PARALLEL", "0")
+    assert config._positive_int("SERIES_PARALLEL", 1) == 1
+    monkeypatch.setenv("SERIES_PARALLEL", "4")
+    assert config._positive_int("SERIES_PARALLEL", 1) == 4
+    monkeypatch.setenv("SERIES_PARALLEL", "many")
+    with pytest.raises(RuntimeError, match="SERIES_PARALLEL"):
+        config._positive_int("SERIES_PARALLEL", 1)
