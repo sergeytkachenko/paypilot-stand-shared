@@ -486,8 +486,9 @@ def explain_series(facts: dict, lang: str = "uk") -> dict:
             text = (resp.text or "").strip()
             out = parse_series(text, _arm_runs(facts), facts["prompt_note"] == "different")
             if out is None:
-                out = (_facts_fallback(facts, lang, "truncated", text[-200:])
-                       if _looks_like_json(text) else {"explanation": text})
+                cut = resp.output_tokens >= SERIES_MAX_TOKENS
+                out = (_facts_fallback(facts, lang, "truncated" if cut else "invalid", text[-200:])
+                       if cut or _looks_like_json(text) else {"explanation": text})
             out["model"] = resp.model
             out["usage"] = {"input_tokens": resp.input_tokens,
                             "output_tokens": resp.output_tokens,

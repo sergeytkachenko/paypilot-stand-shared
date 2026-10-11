@@ -967,7 +967,7 @@ def test_series_explain_falls_back_to_the_facts_when_the_json_is_cut_off(monkeyp
         def complete(self, system, messages, tools):
             return ModelResponse(
                 text='```json\n{"headline": "профіль занижує суму", "rows": [{"kind": "stable", "text": "clean: 0.9; про',
-                input_tokens=4, output_tokens=1024, model=self.model)
+                input_tokens=4, output_tokens=2048, model=self.model)
 
     message = "What is my balance?"
     d = _series_on("lesson-04", message)
@@ -979,7 +979,28 @@ def test_series_explain_falls_back_to_the_facts_when_the_json_is_cut_off(monkeyp
     assert body["fallback"] == "truncated"
     assert body["rows"]
     assert "explanation" not in body
-    assert body["usage"]["output_tokens"] == 1024
+    assert body["usage"]["output_tokens"] == 2048
+
+
+def test_series_explain_labels_complete_but_invalid_json_as_invalid(monkeypatch):
+    from app.agent import explain
+    from app.agent.providers.base import ModelResponse
+
+    class Strict:
+        name = "anthropic"
+        model = "light-model"
+
+        def complete(self, system, messages, tools):
+            return ModelResponse(text='{"headline": "х", "rows": [{"kind": "stable"}]}',
+                                 input_tokens=4, output_tokens=30, model=self.model)
+
+    message = "What is my balance?"
+    d = _series_on("lesson-04", message)
+    monkeypatch.setattr(explain, "get_provider", Strict)
+    r = client.post("/api/_test/series/explain",
+                    json=_series_explain_body(message, d))
+    assert r.status_code == 200
+    assert r.json()["fallback"] == "invalid"
 
 
 def test_series_explain_bounds_the_light_model_call(monkeypatch):
