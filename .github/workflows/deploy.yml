@@ -34,5 +34,5 @@ jobs:
 
       - name: Run the Jenkins job and wait for its result
         env:
-          JOB_NAME: paypilot-stand
+          JOB_NAME: admin/job/paypilot-stand
         run: ./scripts/jenkins-build.sh
