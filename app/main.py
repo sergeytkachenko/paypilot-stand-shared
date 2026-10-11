@@ -1,7 +1,9 @@
 ""
+import contextvars
 import hmac
 import os
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -219,7 +221,14 @@ _series_slots = threading.BoundedSemaphore(2)
 
 
 def _series_arm(message: str, runs: int, customer_id: str | None) -> dict:
-    results = [_fresh_run(message, customer_id) for _ in range(runs)]
+    workers = min(config.SERIES_PARALLEL, runs)
+    if workers == 1:
+        results = [_fresh_run(message, customer_id) for _ in range(runs)]
+    else:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = [pool.submit(contextvars.copy_context().run, _fresh_run,
+                                   message, customer_id) for _ in range(runs)]
+            results = [f.result() for f in futures]
     counts: dict[str, int] = {}
     for r in results:
         for name in set(r["tools_called"]):

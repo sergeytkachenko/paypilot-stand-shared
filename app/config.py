@@ -47,6 +47,19 @@ def _optional_float(name: str) -> float | None:
 
 
 LLM_TEMPERATURE = _optional_float("LLM_TEMPERATURE")
+
+
+def _positive_int(name: str, default: int) -> int:
+    raw = os.environ.get(name, "").strip()
+    if raw == "":
+        return default
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        raise RuntimeError(f"{name} must be a whole number, got {raw!r}")
+
+
+SERIES_PARALLEL = _positive_int("SERIES_PARALLEL", 1)
 EXPLAIN_MODEL = os.environ.get("EXPLAIN_MODEL", "")
 ROUTER = os.environ.get("ROUTER", "").strip().lower()
 ROUTER_PROFILES = {p.strip() for p in os.environ.get("ROUTER_PROFILES", "clean").split(",")
