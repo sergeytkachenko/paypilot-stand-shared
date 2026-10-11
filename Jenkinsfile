@@ -70,6 +70,8 @@ pipeline {
                         set -eu
 
                         kubectl get namespace "${NAMESPACE}" >/dev/null 2>&1 || kubectl create namespace "${NAMESPACE}"
+                        kubectl annotate namespace "${NAMESPACE}" --overwrite \
+                            "ingress.xmesh.pl/allowed-hosts=paypilot.xmesh.pl,paypilot-traces.xmesh.pl"
 
                         for secret in paypilot-stand-env paypilot-stand-tunnel; do
                             kubectl -n "${NAMESPACE}" get secret "${secret}" >/dev/null \

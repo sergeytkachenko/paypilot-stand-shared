@@ -24,7 +24,8 @@ Accepted, 2026-10-11. Issue #32.
 
 1. Чарт `install/helm`, реліз і namespace `paypilot-stand`, деплой — Jenkins
    (`Jenkinsfile`, простий pipeline-job на `main`), який запускає
-   `.github/workflows/deploy.yml`; job створює `scripts/jenkins-job.sh`.
+   `.github/workflows/deploy.yml`; job створює `./scripts/jenkins-job.sh paypilot-stand sergeytkachenko/paypilot-stand-shared`
+   (одноразово), а Jenkinsfile сам анотує namespace `ingress.xmesh.pl/allowed-hosts`.
 2. Стенд: `replicas: 1` і `strategy: Recreate`. RollingUpdate заборонений, бо
    дві одночасні копії пишуть у ті самі SQLite-файли й мають окремі lock-и.
 3. Три PVC (`data`, `traces`, `phoenix`) на `local-path` з анотацією
@@ -46,8 +47,8 @@ Accepted, 2026-10-11. Issue #32.
 8. Несекретна конфігурація — `values.yaml` (`config`), значення перенесені з
    `.env` devhub.
 
-Конектор вимкнений за замовчуванням (`cloudflared.enabled: false`) і вмикається
-окремою зміною після міграції, одночасно з вимкненням конектора devhub: інакше
+Конектор був вимкнений (`cloudflared.enabled: false`) на час міграції і ввімкнений
+окремою зміною після неї, одночасно з вимкненням конектора devhub: інакше
 Cloudflare віддавав би частину запитів порожньому стенду.
 
 Міграція даних: перший деплой, devhub-стенд зупинений (контейнери `Exited`),
