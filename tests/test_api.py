@@ -1,6 +1,7 @@
 """Smoke tests over the HTTP surface with the mock provider."""
 import re
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -933,22 +934,113 @@ def test_series_explain_reports_a_missing_trace_and_an_empty_arm():
     assert r.status_code == 400
 
 
-def test_series_explain_surfaces_a_model_failure_as_502(monkeypatch):
+def test_series_explain_falls_back_to_the_facts_when_the_model_fails(monkeypatch):
     from app.agent import explain
 
     class Broken:
         name = "openai"
 
         def complete(self, system, messages, tools):
-            raise RuntimeError("401 Unauthorized")
+            raise RuntimeError("Anthropic 529: overloaded")
 
     message = "What is my balance?"
     d = _series_on("lesson-04", message)
     monkeypatch.setattr(explain, "get_provider", Broken)
     r = client.post("/api/_test/series/explain",
                     json=_series_explain_body(message, d))
-    assert r.status_code == 502
-    assert "401" in r.json()["detail"]
+    assert r.status_code == 200
+    body = r.json()
+    assert body["fallback"] == "model"
+    assert "529" in body["fallback_detail"]
+    assert body["rows"]
+    assert "mock" not in body["headline"]
+
+
+def test_series_explain_falls_back_to_the_facts_when_the_json_is_cut_off(monkeypatch):
+    from app.agent import explain
+    from app.agent.providers.base import ModelResponse
+
+    class Truncated:
+        name = "anthropic"
+        model = "light-model"
+
+        def complete(self, system, messages, tools):
+            return ModelResponse(
+                text='```json\n{"headline": "профіль занижує суму", "rows": [{"kind": "stable", "text": "clean: 0.9; про',
+                input_tokens=4, output_tokens=1024, model=self.model)
+
+    message = "What is my balance?"
+    d = _series_on("lesson-04", message)
+    monkeypatch.setattr(explain, "get_provider", Truncated)
+    r = client.post("/api/_test/series/explain",
+                    json=_series_explain_body(message, d))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["fallback"] == "truncated"
+    assert body["rows"]
+    assert "explanation" not in body
+    assert body["usage"]["output_tokens"] == 1024
+
+
+def test_series_explain_bounds_the_light_model_call(monkeypatch):
+    from app.agent import explain
+    from app.agent.providers.base import ModelResponse
+
+    seen = {}
+
+    class Recorder:
+        name = "anthropic"
+        model = "light-model"
+        max_tokens, timeout, attempts = 1024, 90, 5
+
+        def complete(self, system, messages, tools):
+            seen.update(max_tokens=self.max_tokens, timeout=self.timeout, attempts=self.attempts)
+            return ModelResponse(text="- ok", input_tokens=1, output_tokens=1, model=self.model)
+
+    message = "What is my balance?"
+    d = _series_on("lesson-04", message)
+    monkeypatch.setattr(explain, "get_provider", Recorder)
+    client.post("/api/_test/series/explain", json=_series_explain_body(message, d))
+    assert seen == {"max_tokens": 2048, "timeout": 40, "attempts": 2}
+
+
+def test_series_explain_names_the_cause_when_the_facts_cannot_be_built(monkeypatch):
+    from app.agent import explain
+
+    def boom(message, arms):
+        raise KeyError("unit")
+
+    message = "What is my balance?"
+    d = _series_on("lesson-04", message)
+    monkeypatch.setattr(explain, "series_facts", boom)
+    r = client.post("/api/_test/series/explain",
+                    json=_series_explain_body(message, d))
+    assert r.status_code == 500
+    assert r.json()["detail"].startswith("series facts failed: KeyError")
+
+
+def test_anthropic_provider_honours_its_attempts_and_limits(monkeypatch):
+    from app import config
+    from app.agent.providers import anthropic_provider
+
+    sent = []
+
+    class Overloaded:
+        status_code = 529
+        text = "overloaded"
+
+    def fake_post(url, json, timeout, headers):
+        sent.append({"timeout": timeout, "max_tokens": json["max_tokens"]})
+        return Overloaded()
+
+    monkeypatch.setattr(config, "ANTHROPIC_API_KEY", "test")
+    monkeypatch.setattr(anthropic_provider.httpx, "post", fake_post)
+    monkeypatch.setattr(anthropic_provider.time, "sleep", lambda s: None)
+    provider = anthropic_provider.AnthropicProvider()
+    provider.max_tokens, provider.timeout, provider.attempts = 2048, 40, 2
+    with pytest.raises(RuntimeError, match="529"):
+        provider.complete("s", [{"role": "user", "content": "x"}], [])
+    assert sent == [{"timeout": 40, "max_tokens": 2048}] * 2
 
 
 def test_series_explain_drops_invented_run_numbers_and_unknown_kinds():
