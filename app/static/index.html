@@ -137,7 +137,7 @@
   .md-p,.md-h,.md-table{margin:.5em 0}
   .md-p:first-child,.md-h:first-child,.md-table:first-child{margin-top:0}
   .md-p:last-child,.md-h:last-child,.md-table:last-child{margin-bottom:0}
-  .md-h{font-weight:600;white-space:normal}
+  .md-h{font-weight:600;font-size:1em;line-height:1.4;white-space:normal}
   .md-h1{font-size:1.2em} .md-h2{font-size:1.1em}
   .md-table{overflow-x:auto;white-space:normal}
   .md-table table{border-collapse:collapse;font-size:var(--fs-sm)}
@@ -1037,21 +1037,22 @@ function mdBlocks(text){
     buf = [];
   };
   const cells = function(line){
-    return line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(function(c){ return c.trim(); });
+    return line.trim().replace(/^\|/, '').replace(/(^|[^\\])\|$/, '$1').split(/(?<!\\)\|/)
+      .map(function(c){ return c.trim().replace(/\\\|/g, '|'); });
   };
-  const isRule = function(line){
+  const isRule = function(line, width){
     return line !== undefined && line.indexOf('|') !== -1 &&
-      /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(line);
+      /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(line) && cells(line).length === width;
   };
   for(let i = 0; i < lines.length; i++){
     const line = lines[i];
-    const h = /^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line);
+    const h = /^\s{0,3}(#{1,6})\s+(.+?)(?:\s+#+)?\s*$/.exec(line);
     if(h){
       flush();
       blocks.push({kind: 'heading', level: h[1].length, text: h[2]});
       continue;
     }
-    if(line.indexOf('|') !== -1 && isRule(lines[i + 1])){
+    if(line.indexOf('|') !== -1 && isRule(lines[i + 1], cells(line).length)){
       flush();
       const head = cells(line);
       const rows = [];
@@ -1077,7 +1078,7 @@ function renderRich(text, box){
   if(blocks.every(function(b){ return b.kind === 'text'; })) return renderInline(text, box);
   blocks.forEach(function(b){
     if(b.kind === 'heading'){
-      box.appendChild(renderInline(b.text, el('div', {cls: 'md-h md-h' + Math.min(b.level, 3)})));
+      box.appendChild(renderInline(b.text, el('h' + b.level, {cls: 'md-h md-h' + Math.min(b.level, 3)})));
     }else if(b.kind === 'table'){
       const row = function(tag, cells){
         return el('tr', null, cells.map(function(c){ return renderInline(c, el(tag)); }));
