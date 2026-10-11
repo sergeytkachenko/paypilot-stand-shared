@@ -104,6 +104,9 @@ pipeline {
 
                         kubectl -n "${NAMESPACE}" rollout status "deployment/${RELEASE}" --timeout=120s
                         kubectl -n "${NAMESPACE}" rollout status "deployment/${RELEASE}-phoenix" --timeout=120s
+                        if kubectl -n "${NAMESPACE}" get "deployment/${RELEASE}-cloudflared" >/dev/null 2>&1; then
+                            kubectl -n "${NAMESPACE}" rollout status "deployment/${RELEASE}-cloudflared" --timeout=120s
+                        fi
 
                         running=$(kubectl -n "${NAMESPACE}" get deployment "${RELEASE}" \
                             -o jsonpath='{.spec.template.spec.containers[0].image}')
