@@ -2,7 +2,7 @@
 from app.agent.providers.openai_provider import OpenAIProvider
 
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
-DEFAULT_MODEL = "anthropic/claude-haiku-5-5"
+DEFAULT_MODEL = "anthropic/claude-haiku-5.5"
 
 
 class OpenRouterProvider(OpenAIProvider):

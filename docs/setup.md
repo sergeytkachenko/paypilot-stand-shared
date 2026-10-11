@@ -120,7 +120,7 @@ ANTHROPIC_API_KEY=sk-ant-...ваш ключ...
 
 Ключ OpenRouter замість Anthropic теж підходить: `LLM_PROVIDER=openrouter` і
 `OPENROUTER_API_KEY=sk-or-...`. Модель за замовчуванням —
-`anthropic/claude-haiku-5-5`; іншу задають через `LLM_MODEL` у форматі
+`anthropic/claude-haiku-5.5`; іншу задають через `LLM_MODEL` у форматі
 OpenRouter (`постачальник/модель`).
 
 Три речі, на яких спотикаються найчастіше:

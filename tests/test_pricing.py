@@ -38,3 +38,10 @@ def test_anthropic_default_model_is_haiku_5_5_and_priced(monkeypatch):
     model = anthropic_provider.AnthropicProvider().model
     assert model == "claude-haiku-5-5"
     assert pricing.price_key(model) == "claude-haiku-5-5"
+
+
+def test_openrouter_dotted_model_id_is_priced_like_anthropic():
+    assert pricing.price_key("anthropic/claude-haiku-5.5") == "claude-haiku-5-5"
+    assert pricing.cost_usd("anthropic/claude-haiku-5.5", 5266, 110) == \
+        pricing.cost_usd("claude-haiku-5-5", 5266, 110)
+    assert pricing.price_key("jev-1.13.0") == "jev-1.13.0"

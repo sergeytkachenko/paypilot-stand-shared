@@ -10,7 +10,7 @@ class _Resp:
         pass
 
     def json(self):
-        return {"model": "anthropic/claude-haiku-5-5",
+        return {"model": "anthropic/claude-haiku-5.5",
                 "choices": [{"message": {"content": None, "tool_calls": [{
                     "id": "c1", "type": "function",
                     "function": {"name": "get_account", "arguments": "{}"}}]}}],
@@ -49,7 +49,7 @@ def test_openrouter_posts_openai_format_to_openrouter(monkeypatch):
 
     assert sent["url"] == "https://openrouter.ai/api/v1/chat/completions"
     assert sent["headers"] == {"Authorization": "Bearer sk-or-test"}
-    assert sent["body"]["model"] == "anthropic/claude-haiku-5-5"
+    assert sent["body"]["model"] == "anthropic/claude-haiku-5.5"
     assert sent["body"]["messages"][0] == {"role": "system", "content": "sys"}
     assert sent["body"]["tools"][0]["function"]["name"] == "get_account"
     assert resp.tool_calls == [{"id": "c1", "name": "get_account", "arguments": {}}]
@@ -77,7 +77,7 @@ def test_openrouter_default_model_passes_the_priced_startup_check(monkeypatch):
     monkeypatch.setattr(config, "LLM_MODEL", "")
     monkeypatch.setattr(config, "EXPLAIN_MODEL", "")
     monkeypatch.setattr(config, "ROUTER", "")
-    assert budget.effective_models() == [("LLM_MODEL", "anthropic/claude-haiku-5-5")]
+    assert budget.effective_models() == [("LLM_MODEL", "anthropic/claude-haiku-5.5")]
     budget.validate_startup()
 
 

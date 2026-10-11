@@ -22,7 +22,10 @@ def price_key(model: str | None) -> str | None:
         return None
     name = model.strip().lower().rsplit("/", 1)[-1]
     name = _DATED_SUFFIX.sub("", name)
-    return name if name in PRICES_PER_MTOK_USD else None
+    for candidate in (name, name.replace(".", "-")):
+        if candidate in PRICES_PER_MTOK_USD:
+            return candidate
+    return None
 
 
 def cost_usd(model: str | None, input_tokens: int, output_tokens: int) -> float | None:
