@@ -1041,3 +1041,32 @@ def test_series_parallel_setting_is_a_positive_integer(monkeypatch):
     monkeypatch.setenv("SERIES_PARALLEL", "many")
     with pytest.raises(RuntimeError, match="SERIES_PARALLEL"):
         config._positive_int("SERIES_PARALLEL", 1)
+
+
+def test_series_parallel_runs_see_the_db_key_and_customer_of_their_request(monkeypatch, tmp_path):
+    import threading
+
+    from app import budget, config, db, main, session_ctx
+
+    seen = []
+
+    def fake_run(message, customer_id):
+        seen.append({"thread": threading.get_ident(), "db": db.path(),
+                     "key": budget._active.get(), "customer": session_ctx.current()})
+        return {"profile": "clean", "active_defects": [], "prompt_version": "v",
+                "tools_called": [], "elapsed_ms": 1,
+                "usage": {"input_tokens": 1, "output_tokens": 1, "cost_usd": None}}
+
+    monkeypatch.setattr(config, "SERIES_PARALLEL", 3)
+    monkeypatch.setattr(main, "_fresh_run", fake_run)
+    token = budget._active.set("key-7")
+    try:
+        with db.bound(tmp_path / "ws.db"), session_ctx.bind("CUS-0003"):
+            arm = main._series_arm("x", 5, None)
+    finally:
+        budget._active.reset(token)
+    assert len(arm["runs"]) == 5
+    assert {r["db"] for r in seen} == {tmp_path / "ws.db"}
+    assert {r["key"] for r in seen} == {"key-7"}
+    assert {r["customer"] for r in seen} == {"CUS-0003"}
+    assert threading.get_ident() not in {r["thread"] for r in seen}
