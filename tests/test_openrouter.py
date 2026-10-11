@@ -48,7 +48,7 @@ def test_openrouter_posts_openai_format_to_openrouter(monkeypatch):
         "sys", [{"role": "user", "content": "balance?"}], tools)
 
     assert sent["url"] == "https://openrouter.ai/api/v1/chat/completions"
-    assert sent["headers"]["Authorization"] == "Bearer sk-or-test"
+    assert sent["headers"] == {"Authorization": "Bearer sk-or-test"}
     assert sent["body"]["model"] == "anthropic/claude-haiku-5-5"
     assert sent["body"]["messages"][0] == {"role": "system", "content": "sys"}
     assert sent["body"]["tools"][0]["function"]["name"] == "get_account"

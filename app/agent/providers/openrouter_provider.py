@@ -10,6 +10,3 @@ class OpenRouterProvider(OpenAIProvider):
     api_url = API_URL
     key_setting = "OPENROUTER_API_KEY"
     default_model = DEFAULT_MODEL
-
-    def _headers(self) -> dict:
-        return {**super()._headers(), "X-Title": "paypilot-stand"}
