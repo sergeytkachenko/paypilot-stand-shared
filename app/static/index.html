@@ -134,6 +134,15 @@
   .msg.user{align-self:flex-end;background:var(--user-bg)}
   .msg.bot{align-self:flex-start;background:var(--surface);border:1px solid var(--line)}
   .msg.sys{align-self:center;color:var(--muted);font-size:var(--fs-sm);background:none;border:1px dashed var(--line-strong)}
+  .md-p,.md-h,.md-table{margin:.5em 0}
+  .md-p:first-child,.md-h:first-child,.md-table:first-child{margin-top:0}
+  .md-p:last-child,.md-h:last-child,.md-table:last-child{margin-bottom:0}
+  .md-h{font-weight:600;white-space:normal}
+  .md-h1{font-size:1.2em} .md-h2{font-size:1.1em}
+  .md-table{overflow-x:auto;white-space:normal}
+  .md-table table{border-collapse:collapse;font-size:var(--fs-sm)}
+  .md-table th,.md-table td{border:1px solid var(--line-strong);padding:4px 10px;text-align:left;vertical-align:top}
+  .md-table th{background:var(--surface-2);font-weight:600}
   .msg.err{align-self:center;font-size:var(--fs-sm);background:var(--err-bg);color:var(--err);border:1px solid var(--err-line)}
   .cust-tag{display:inline-block;font:var(--fs-xs) var(--mono);background:var(--surface);border:1px solid var(--line);
             color:var(--muted);border-radius:4px;padding:0 6px;margin-right:8px;vertical-align:1px}
@@ -1005,7 +1014,7 @@ function jput(body){
           body: JSON.stringify(body)};
 }
 
-function renderRich(text, el){
+function renderInline(text, el){
   const re = /\*\*([^*]+)\*\*|`([^`]+)`/g;
   let last = 0, m;
   while((m = re.exec(text)) !== null){
@@ -1017,6 +1026,71 @@ function renderRich(text, el){
   }
   if(last < text.length) el.appendChild(document.createTextNode(text.slice(last)));
   return el;
+}
+
+function mdBlocks(text){
+  const lines = text.split('\n');
+  const blocks = [];
+  let buf = [];
+  const flush = function(){
+    if(buf.length) blocks.push({kind: 'text', text: buf.join('\n')});
+    buf = [];
+  };
+  const cells = function(line){
+    return line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(function(c){ return c.trim(); });
+  };
+  const isRule = function(line){
+    return line !== undefined && line.indexOf('|') !== -1 &&
+      /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(line);
+  };
+  for(let i = 0; i < lines.length; i++){
+    const line = lines[i];
+    const h = /^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line);
+    if(h){
+      flush();
+      blocks.push({kind: 'heading', level: h[1].length, text: h[2]});
+      continue;
+    }
+    if(line.indexOf('|') !== -1 && isRule(lines[i + 1])){
+      flush();
+      const head = cells(line);
+      const rows = [];
+      i += 2;
+      while(i < lines.length && lines[i].trim() && lines[i].indexOf('|') !== -1){
+        const row = cells(lines[i]);
+        while(row.length < head.length) row.push('');
+        rows.push(row.slice(0, head.length));
+        i++;
+      }
+      i--;
+      blocks.push({kind: 'table', head: head, rows: rows});
+      continue;
+    }
+    buf.push(line);
+  }
+  flush();
+  return blocks;
+}
+
+function renderRich(text, box){
+  const blocks = mdBlocks(text);
+  if(blocks.every(function(b){ return b.kind === 'text'; })) return renderInline(text, box);
+  blocks.forEach(function(b){
+    if(b.kind === 'heading'){
+      box.appendChild(renderInline(b.text, el('div', {cls: 'md-h md-h' + Math.min(b.level, 3)})));
+    }else if(b.kind === 'table'){
+      const row = function(tag, cells){
+        return el('tr', null, cells.map(function(c){ return renderInline(c, el(tag)); }));
+      };
+      box.appendChild(el('div', {cls: 'md-table'}, [el('table', null, [
+        el('thead', null, [row('th', b.head)]),
+        el('tbody', null, b.rows.map(function(r){ return row('td', r); }))])]));
+    }else{
+      const trimmed = b.text.replace(/^\s*\n|\n\s*$/g, '');
+      if(trimmed.trim()) box.appendChild(renderInline(trimmed, el('div', {cls: 'md-p'})));
+    }
+  });
+  return box;
 }
 
 function addMsg(text, cls){
@@ -1415,7 +1489,7 @@ function renderSeriesTable(rows, arms, armKeys, n){
         ? t('x5RefOk', {tier: row.reference.tier})
         : t('x5RefBad', {tier: row.reference.tier, v: row.reference.spread_pct + '%'})}));
     }
-    const txt = el('span', {cls: 'txt'});
+    const txt = el('div', {cls: 'txt'});
     renderRich(row.sample.answer || t('emptyRun'), txt);
     const quote = el('div', {cls: 'quote'}, [
       el('span', {cls: 'src', text: t('x5Sample', {p: armLabel(arms[row.sample.arm]), i: row.sample.run}) + (changed.length ? t('x5SampleDiff') : '')}), txt]);
@@ -1539,8 +1613,8 @@ function renderWhy(box, r, arms, armKeys, again){
     el('button', {cls: 'quiet', text: t('copy'),
       onclick: function(){ copyText(whyAsText(r, arms, armKeys, n), this); }}),
     el('button', {cls: 'quiet', text: t('x5WhyAgain'), onclick: again})]));
-  if(r.headline) box.appendChild(renderRich(r.headline, el('p', {cls: 'why-top'})));
-  if(r.explanation) box.appendChild(renderRich(r.explanation, el('p', {cls: 'why-raw'})));
+  if(r.headline) box.appendChild(renderInline(r.headline, el('p', {cls: 'why-top'})));
+  if(r.explanation) box.appendChild(renderInline(r.explanation, el('p', {cls: 'why-raw'})));
   if(!r.headline && !r.explanation && !(r.rows || []).length){
     box.appendChild(el('p', {cls: 'why-raw', text: t('x5WhyNone')}));
   }
@@ -1555,7 +1629,7 @@ function renderWhy(box, r, arms, armKeys, again){
       }
       grid.appendChild(el('div', {cls: 'tr'}, [
         el('span', {cls: 'k'}, [el('span', {cls: 'badge ' + kind, text: t(WHY_KINDS[kind])})]),
-        el('span', {cls: 'v'}, [renderRich(row.text, el('span', {cls: 'txt'})),
+        el('span', {cls: 'v'}, [renderInline(row.text, el('span', {cls: 'txt'})),
           chips.length ? el('span', {cls: 'chips'}, chips) : null])]));
     });
     box.appendChild(grid);
