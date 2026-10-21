@@ -16,7 +16,15 @@ API_URL = "https://api.openai.com/v1/chat/completions"
 DEFAULT_MODEL = "gpt-5-mini"
 
 
-def _to_openai(system: str, messages: list[dict]) -> list[dict]:
+def _arguments(raw: str | None) -> dict:
+    try:
+        parsed = json.loads(raw or "{}")
+    except json.JSONDecodeError:
+        return {"_unparsed_arguments": raw}
+    return parsed if isinstance(parsed, dict) else {"_unparsed_arguments": raw}
+
+
+def _to_openai(system: str | list[dict], messages: list[dict]) -> list[dict]:
     out = [{"role": "system", "content": system}]
     for m in messages:
         if m["role"] == "user":
@@ -49,6 +57,9 @@ class OpenAIProvider(Provider):
             raise RuntimeError(f"{self.key_setting} is not set")
         self.model = config.LLM_MODEL or self.default_model
 
+    def _system_content(self, system: str):
+        return system
+
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.api_key}"}
 
@@ -56,7 +67,7 @@ class OpenAIProvider(Provider):
         payload = {
             "model": self.model,
             **_temperature(),
-            "messages": _to_openai(system, messages),
+            "messages": _to_openai(self._system_content(system), messages),
         }
         if tools:
             payload["tools"] = [{"type": "function", "function": {
@@ -68,11 +79,14 @@ class OpenAIProvider(Provider):
         data = resp.json()
         msg = data["choices"][0]["message"]
         tool_calls = [{"id": tc["id"], "name": tc["function"]["name"],
-                       "arguments": json.loads(tc["function"]["arguments"] or "{}")}
+                       "arguments": _arguments(tc["function"]["arguments"])}
                       for tc in msg.get("tool_calls") or []]
-        usage = data.get("usage", {})
+        usage = data.get("usage") or {}
+        details = usage.get("prompt_tokens_details") or {}
         return ModelResponse(
             text=msg.get("content"), tool_calls=tool_calls,
             input_tokens=usage.get("prompt_tokens", 0),
             output_tokens=usage.get("completion_tokens", 0),
-            model=data.get("model", self.model))
+            model=data.get("model", self.model),
+            cache_read_input_tokens=details.get("cached_tokens") or 0,
+            cache_creation_input_tokens=details.get("cache_write_tokens") or 0)

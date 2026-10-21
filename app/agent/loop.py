@@ -105,7 +105,7 @@ def _run_turn(sid: str, state: dict, user_message: str) -> dict:
 
     state["messages"].append({"role": "user", "content": user_message})
     answer = None
-    total_in = total_out = 0
+    total_in = total_out = cache_read = 0
     model = getattr(provider, "model", "")
     call_costs: list[float | None] = []
     system, router_cost = _route(trace, state, system, user_message)
@@ -114,18 +114,14 @@ def _run_turn(sid: str, state: dict, user_message: str) -> dict:
 
     for step in range(config.MAX_AGENT_STEPS):
         with trace.span("llm.call", **{"agent.loop_step": step}) as s:
-            resp = provider.complete(system, _messages_for_model(state),
-                                     tools.specs())
-            s.attributes.update({
-                "gen_ai.request.model": resp.model,
-                "gen_ai.usage.input_tokens": resp.input_tokens,
-                "gen_ai.usage.output_tokens": resp.output_tokens,
-            })
+            resp = provider.complete(prompt.stamp(system),
+                                     _messages_for_model(state), tools.specs())
+            s.attributes.update(_usage_attributes(resp))
         total_in += resp.input_tokens
         total_out += resp.output_tokens
+        cache_read += resp.cache_read_input_tokens
         model = resp.model or model
-        call_costs.append(pricing.cost_usd(resp.model or model, resp.input_tokens,
-                                           resp.output_tokens))
+        call_costs.append(_call_cost(resp, model))
 
         if not resp.tool_calls:
             answer = resp.text or ""
@@ -140,8 +136,9 @@ def _run_turn(sid: str, state: dict, user_message: str) -> dict:
                 "role": "tool", "tool_call_id": tc["id"], "name": tc["name"],
                 "content": json.dumps(result, ensure_ascii=False)})
             if defects.is_on("D14") and _is_empty_result(result):
-                total_in, total_out = _d14_retry_loop(
-                    trace, provider, system, state, tc, total_in, total_out)
+                total_in, total_out, cache_read = _d14_retry_loop(
+                    trace, provider, system, state, tc, total_in, total_out,
+                    cache_read)
     else:
         answer = "I could not complete this request within the step budget."
         state["messages"].append({"role": "assistant", "content": answer})
@@ -149,6 +146,7 @@ def _run_turn(sid: str, state: dict, user_message: str) -> dict:
     trace.root.attributes.update({
         "gen_ai.usage.total_input_tokens": total_in,
         "gen_ai.usage.total_output_tokens": total_out,
+        "gen_ai.usage.total_cache_read_input_tokens": cache_read,
     })
     tree = trace.finish()
     return {"session_id": sid, "request_id": tree["request_id"],
@@ -158,6 +156,22 @@ def _run_turn(sid: str, state: dict, user_message: str) -> dict:
             "usage": {"input_tokens": total_in, "output_tokens": total_out,
                       "model": model,
                       "cost_usd": pricing.total_cost_usd(call_costs)}}
+
+
+def _usage_attributes(resp) -> dict:
+    return {
+        "gen_ai.request.model": resp.model,
+        "gen_ai.usage.input_tokens": resp.input_tokens,
+        "gen_ai.usage.output_tokens": resp.output_tokens,
+        "gen_ai.usage.cache_read_input_tokens": resp.cache_read_input_tokens,
+        "gen_ai.usage.cache_creation_input_tokens": resp.cache_creation_input_tokens,
+    }
+
+
+def _call_cost(resp, model: str) -> float | None:
+    return pricing.cost_usd(resp.model or model, resp.input_tokens, resp.output_tokens,
+                            cache_read=resp.cache_read_input_tokens,
+                            cache_write=resp.cache_creation_input_tokens)
 
 
 def _route(trace: RequestTrace, state: dict, system: str,
@@ -204,20 +218,18 @@ def _execute_tool(trace: RequestTrace, tc: dict) -> dict:
 
 
 def _d14_retry_loop(trace: RequestTrace, provider, system: str, state: dict,
-                    tc: dict, total_in: int, total_out: int) -> tuple[int, int]:
+                    tc: dict, total_in: int, total_out: int,
+                    cache_read: int) -> tuple[int, int, int]:
     ""
     for attempt in range(1, _EMPTY_RETRY_LIMIT):
         with trace.span("llm.call", **{"agent.loop_step": f"retry-{attempt}",
                                        "retry.attempt": attempt}) as s:
-            probe = provider.complete(system, _messages_for_model(state),
-                                      tools.specs())
-            s.attributes.update({
-                "gen_ai.request.model": probe.model,
-                "gen_ai.usage.input_tokens": probe.input_tokens,
-                "gen_ai.usage.output_tokens": probe.output_tokens,
-            })
+            probe = provider.complete(prompt.stamp(system),
+                                      _messages_for_model(state), tools.specs())
+            s.attributes.update(_usage_attributes(probe))
         total_in += probe.input_tokens
         total_out += probe.output_tokens
+        cache_read += probe.cache_read_input_tokens
 
         retry_tc = {"id": uuid.uuid4().hex[:12], "name": tc["name"],
                     "arguments": tc["arguments"]}
@@ -230,4 +242,4 @@ def _d14_retry_loop(trace: RequestTrace, provider, system: str, state: dict,
             "content": json.dumps(result, ensure_ascii=False)})
         if not _is_empty_result(result):
             break
-    return total_in, total_out
+    return total_in, total_out, cache_read

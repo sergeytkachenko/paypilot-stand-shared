@@ -9,6 +9,8 @@ class ModelResponse:
     input_tokens: int = 0
     output_tokens: int = 0
     model: str = ""
+    cache_read_input_tokens: int = 0
+    cache_creation_input_tokens: int = 0
 
 
 class Provider:
@@ -34,7 +36,9 @@ class Metered:
         from app import budget
         resp = self._inner.complete(system, messages, tools)
         budget.charge(resp.model or getattr(self._inner, "model", ""),
-                      resp.input_tokens, resp.output_tokens)
+                      resp.input_tokens, resp.output_tokens,
+                      cache_read=resp.cache_read_input_tokens,
+                      cache_write=resp.cache_creation_input_tokens)
         return resp
 
 

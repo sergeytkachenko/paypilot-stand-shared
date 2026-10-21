@@ -50,7 +50,8 @@ def test_openrouter_posts_openai_format_to_openrouter(monkeypatch):
     assert sent["url"] == "https://openrouter.ai/api/v1/chat/completions"
     assert sent["headers"] == {"Authorization": "Bearer sk-or-test"}
     assert sent["body"]["model"] == "anthropic/claude-haiku-5.5"
-    assert sent["body"]["messages"][0] == {"role": "system", "content": "sys"}
+    assert sent["body"]["messages"][0] == {"role": "system", "content": [
+        {"type": "text", "text": "sys", "cache_control": {"type": "ephemeral"}}]}
     assert sent["body"]["tools"][0]["function"]["name"] == "get_account"
     assert resp.tool_calls == [{"id": "c1", "name": "get_account", "arguments": {}}]
     assert (resp.input_tokens, resp.output_tokens) == (12, 3)

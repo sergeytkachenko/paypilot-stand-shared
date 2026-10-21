@@ -238,11 +238,13 @@ def active() -> Key | None:
     return _active.get()
 
 
-def charge(model: str | None, input_tokens: int, output_tokens: int) -> None:
+def charge(model: str | None, input_tokens: int, output_tokens: int,
+           cache_read: int = 0, cache_write: int = 0) -> None:
     key = _active.get()
     if key is None or input_tokens + output_tokens == 0:
         return
-    cost = pricing.cost_usd(model, input_tokens, output_tokens)
+    cost = pricing.cost_usd(model, input_tokens, output_tokens,
+                            cache_read=cache_read, cache_write=cache_write)
     priced = cost is not None
     if not priced:
         cost = 0.0 if config.LLM_PROVIDER == "mock" else pricing.ceiling_cost_usd(
