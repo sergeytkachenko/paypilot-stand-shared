@@ -205,3 +205,52 @@ def test_lesson_07_profile_is_unchanged():
     assert {"D28", "D29"} <= set(body["all_defects"])
     from app import defects
     assert defects.PROFILES["lesson-07"] == ["D11", "D12", "D13"]
+
+
+def test_unparsed_arguments_reach_the_tool_as_an_error_not_a_crash():
+    from app import session_ctx
+    with session_ctx.bind("CUS-0001"):
+        out = tools.dispatch("get_transactions", {"_unparsed_arguments": "{not json"})
+    assert "error" in out
+
+
+def test_d29_codes_a_compliance_hold_without_dropping_the_window(enable):
+    enable("D29")
+    from app import db, session_ctx
+    tx = db.one("SELECT t.id FROM transactions t JOIN accounts a ON a.id = t.account_id "
+                "WHERE a.customer_id = 'CUS-0006' LIMIT 1")
+    with session_ctx.bind("CUS-0006"):
+        out = tools.dispatch("check_dispute_eligibility",
+                             {"transaction_id": tx["id"], "reason_code": "duplicate_charge"})
+    assert out["ok"] is True and out["r"] == "N" and 4 in out["c"]
+    assert set(out) == {"ok", "r", "c", "w"}
+
+
+def test_d14_probe_cache_tokens_count_in_the_turn_total(monkeypatch, enable):
+    enable("D14")
+
+    class Provider:
+        name = "anthropic"
+        model = "claude-haiku-5-5"
+        calls = 0
+
+        def complete(self, system, messages, tool_specs):
+            Provider.calls += 1
+            if Provider.calls == 1:
+                return ModelResponse(tool_calls=[{"id": "t1", "name": "get_transactions",
+                                                  "arguments": {"account_id": "ACC-1004"}}],
+                                     input_tokens=100, output_tokens=1, model=self.model,
+                                     cache_read_input_tokens=10)
+            if Provider.calls <= 8:
+                return ModelResponse(text="probe", input_tokens=100, output_tokens=1,
+                                     model=self.model, cache_read_input_tokens=10)
+            return ModelResponse(text="done", input_tokens=100, output_tokens=1,
+                                 model=self.model, cache_read_input_tokens=10)
+
+    monkeypatch.setattr(loop, "get_provider", Provider)
+    out = client.post("/chat", json={"message": "Transactions for ACC-1004?",
+                                     "customer_id": "CUS-0003"}).json()
+    tree = client.get(f"/api/_test/traces/{out['request_id']}").json()
+    spans = [c for c in tree["children"] if c["name"] == "llm.call"]
+    assert tree["attributes"]["gen_ai.usage.total_cache_read_input_tokens"] == sum(
+        c["attributes"]["gen_ai.usage.cache_read_input_tokens"] for c in spans)

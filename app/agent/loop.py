@@ -136,8 +136,9 @@ def _run_turn(sid: str, state: dict, user_message: str) -> dict:
                 "role": "tool", "tool_call_id": tc["id"], "name": tc["name"],
                 "content": json.dumps(result, ensure_ascii=False)})
             if defects.is_on("D14") and _is_empty_result(result):
-                total_in, total_out = _d14_retry_loop(
-                    trace, provider, system, state, tc, total_in, total_out)
+                total_in, total_out, cache_read = _d14_retry_loop(
+                    trace, provider, system, state, tc, total_in, total_out,
+                    cache_read)
     else:
         answer = "I could not complete this request within the step budget."
         state["messages"].append({"role": "assistant", "content": answer})
@@ -217,7 +218,8 @@ def _execute_tool(trace: RequestTrace, tc: dict) -> dict:
 
 
 def _d14_retry_loop(trace: RequestTrace, provider, system: str, state: dict,
-                    tc: dict, total_in: int, total_out: int) -> tuple[int, int]:
+                    tc: dict, total_in: int, total_out: int,
+                    cache_read: int) -> tuple[int, int, int]:
     ""
     for attempt in range(1, _EMPTY_RETRY_LIMIT):
         with trace.span("llm.call", **{"agent.loop_step": f"retry-{attempt}",
@@ -227,6 +229,7 @@ def _d14_retry_loop(trace: RequestTrace, provider, system: str, state: dict,
             s.attributes.update(_usage_attributes(probe))
         total_in += probe.input_tokens
         total_out += probe.output_tokens
+        cache_read += probe.cache_read_input_tokens
 
         retry_tc = {"id": uuid.uuid4().hex[:12], "name": tc["name"],
                     "arguments": tc["arguments"]}
@@ -239,4 +242,4 @@ def _d14_retry_loop(trace: RequestTrace, provider, system: str, state: dict,
             "content": json.dumps(result, ensure_ascii=False)})
         if not _is_empty_result(result):
             break
-    return total_in, total_out
+    return total_in, total_out, cache_read

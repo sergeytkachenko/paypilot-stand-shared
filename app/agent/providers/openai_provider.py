@@ -24,7 +24,7 @@ def _arguments(raw: str | None) -> dict:
     return parsed if isinstance(parsed, dict) else {"_unparsed_arguments": raw}
 
 
-def _to_openai(system, messages: list[dict]) -> list[dict]:
+def _to_openai(system: str | list[dict], messages: list[dict]) -> list[dict]:
     out = [{"role": "system", "content": system}]
     for m in messages:
         if m["role"] == "user":
