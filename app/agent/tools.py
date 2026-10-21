@@ -114,7 +114,18 @@ def check_dispute_eligibility(transaction_id: str, reason_code: str) -> dict:
     if not defects.is_on("D24") and res["checks"].get("compliance_hold", "").startswith("fail"):
         res["checks"]["compliance_hold"] = (
             "fail: a customer-level restriction applies; escalation required")
+    if defects.is_on("D29") and not res["eligible"]:
+        return _terse_eligibility(res)
     return res
+
+
+_CHECK_CODES = {"reason_code": 1, "tx_status": 2, "window": 3, "compliance_hold": 4}
+
+
+def _terse_eligibility(res: dict) -> dict:
+    failed = [_CHECK_CODES.get(name, 9) for name, verdict in res["checks"].items()
+              if str(verdict).startswith("fail")]
+    return {"ok": True, "r": "N", "c": failed, "w": res.get("window_days")}
 
 
 

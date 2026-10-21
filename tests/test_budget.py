@@ -98,7 +98,7 @@ def test_summary_fold_is_charged_too(keys_on, student):
 
 def test_priced_model_cost_lands_in_the_ledger(keys_on, student, monkeypatch):
     key, headers = student
-    monkeypatch.setattr(pricing, "cost_usd", lambda m, i, o: 0.01)
+    monkeypatch.setattr(pricing, "cost_usd", lambda m, i, o, **cache: 0.01)
     client.post("/chat", json=ASK, headers=headers)
     assert budget.usage(key)["day"]["spent_usd"] == pytest.approx(
         0.01 * len(_ledger(key)))

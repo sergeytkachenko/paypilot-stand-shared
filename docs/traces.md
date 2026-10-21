@@ -48,6 +48,7 @@ agent.request                     ← корінь, один на хід діа�
 | `llm.provider` | `mock` / `anthropic` / `openai` / `openrouter` |
 | `context.replay_active` | `true`, коли до контексту домішується історія |
 | `gen_ai.usage.total_input_tokens` / `...output_tokens` | сумарні токени ходу |
+| `gen_ai.usage.total_cache_read_input_tokens` | скільки вхідних токенів ходу прочитано з кешу провайдера |
 
 Перші п'ять — це те, що робить прогін відтворюваним. Запис результату без них
 неможливо повторити через тиждень.
@@ -55,7 +56,17 @@ agent.request                     ← корінь, один на хід діа�
 ### `llm.call`
 
 `gen_ai.request.model`, `gen_ai.usage.input_tokens`,
-`gen_ai.usage.output_tokens`, `agent.loop_step`.
+`gen_ai.usage.output_tokens`, `gen_ai.usage.cache_read_input_tokens`,
+`gen_ai.usage.cache_creation_input_tokens`, `agent.loop_step`.
+
+`input_tokens` — усі вхідні токени виклику, разом із кешованими.
+`cache_read_input_tokens` — їхня частина, прочитана з кешу провайдера;
+`cache_creation_input_tokens` — частина, яку провайдер цим викликом записав у
+кеш. Стенд позначає system prompt як кешований (`cache_control` для
+`anthropic` і `openrouter`; `openai` кешує сам). Якщо префікс промпту однаковий,
+з другого виклику `cache_read_input_tokens` дорівнює розміру промпту з
+інструментами, а виклик коштує в кілька разів дешевше. Нуль на кожному виклику
+означає, що щось змінює початок промпту між викликами.
 
 Якщо оркестратор повторює крок, повтори видно як окремі спани `llm.call` із
 власним номером у `agent.loop_step`. Повторюється **повний** оберт «модель →

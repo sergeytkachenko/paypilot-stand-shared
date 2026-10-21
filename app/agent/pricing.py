@@ -14,6 +14,11 @@ LONG_PROMPT_PRICES_PER_MTOK_USD = {
     "claude-haiku-5-5": (100_000, 0.50, 2.50),
 }
 
+CACHE_PRICE_MULTIPLIERS = {
+    "claude-haiku-4-5": (0.1, 1.25),
+    "claude-haiku-5-5": (0.1, 1.25),
+}
+
 _DATED_SUFFIX = re.compile(r"-\d{8}$")
 
 
@@ -28,7 +33,8 @@ def price_key(model: str | None) -> str | None:
     return None
 
 
-def cost_usd(model: str | None, input_tokens: int, output_tokens: int) -> float | None:
+def cost_usd(model: str | None, input_tokens: int, output_tokens: int,
+             cache_read: int = 0, cache_write: int = 0) -> float | None:
     key = price_key(model)
     if key is None:
         return None
@@ -36,7 +42,10 @@ def cost_usd(model: str | None, input_tokens: int, output_tokens: int) -> float 
     long_tier = LONG_PROMPT_PRICES_PER_MTOK_USD.get(key)
     if long_tier and input_tokens > long_tier[0]:
         price_in, price_out = long_tier[1], long_tier[2]
-    return round((input_tokens * price_in + output_tokens * price_out) / 1_000_000, 6)
+    read_mult, write_mult = CACHE_PRICE_MULTIPLIERS.get(key, (1.0, 1.0))
+    uncached = max(input_tokens - cache_read - cache_write, 0)
+    input_cost = (uncached + cache_read * read_mult + cache_write * write_mult) * price_in
+    return round((input_cost + output_tokens * price_out) / 1_000_000, 6)
 
 
 def ceiling_cost_usd(input_tokens: int, output_tokens: int) -> float:

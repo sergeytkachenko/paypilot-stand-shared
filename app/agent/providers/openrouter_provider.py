@@ -10,3 +10,7 @@ class OpenRouterProvider(OpenAIProvider):
     api_url = API_URL
     key_setting = "OPENROUTER_API_KEY"
     default_model = DEFAULT_MODEL
+
+    def _system_content(self, system: str):
+        return [{"type": "text", "text": system,
+                 "cache_control": {"type": "ephemeral"}}]

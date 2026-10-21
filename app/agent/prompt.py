@@ -2,12 +2,14 @@
 import re
 
 import hashlib
+import uuid
 from pathlib import Path
 
 from app import config, defects
 
 BASE_FILE = config.PROMPTS_DIR / "base.v1.md"
 OVERLAYS_DIR = config.PROMPTS_DIR / "overlays"
+REQUEST_REF = "{{request_ref}}"
 
 
 def _parse_overlay(text: str) -> tuple[dict, str]:
@@ -37,6 +39,8 @@ def _apply(base: str, meta: dict, body: str, overlay_name: str) -> str:
     mode = meta.get("mode")
     if mode == "append":
         return base.rstrip() + "\n\n" + body + "\n"
+    if mode == "prepend":
+        return body + "\n\n" + base
     if mode == "remove_text":
         if body not in base:
             raise ValueError(f"{overlay_name}: remove_text target not found in prompt")
@@ -83,3 +87,9 @@ def build() -> tuple[str, str]:
         applied.append(d)
     version = "base.v1" + ("" if not applied else "+" + "+".join(applied))
     return base, version
+
+
+def stamp(system: str) -> str:
+    if REQUEST_REF not in system:
+        return system
+    return system.replace(REQUEST_REF, uuid.uuid4().hex[:12])

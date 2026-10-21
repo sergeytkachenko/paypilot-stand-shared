@@ -164,8 +164,10 @@ def explain(facts: dict, lang: str = "uk") -> dict:
             "tool_diffs": len(facts["tool_diffs"]),
             "usage": {"input_tokens": resp.input_tokens,
                       "output_tokens": resp.output_tokens,
-                      "cost_usd": pricing.cost_usd(resp.model, resp.input_tokens,
-                                                   resp.output_tokens)}}
+                      "cost_usd": pricing.cost_usd(
+                          resp.model, resp.input_tokens, resp.output_tokens,
+                          cache_read=resp.cache_read_input_tokens,
+                          cache_write=resp.cache_creation_input_tokens)}}
 
 
 SERIES_KINDS = ("stable", "sometimes", "noise", "cause")
@@ -492,8 +494,10 @@ def explain_series(facts: dict, lang: str = "uk") -> dict:
             out["model"] = resp.model
             out["usage"] = {"input_tokens": resp.input_tokens,
                             "output_tokens": resp.output_tokens,
-                            "cost_usd": pricing.cost_usd(resp.model, resp.input_tokens,
-                                                         resp.output_tokens)}
+                            "cost_usd": pricing.cost_usd(
+                                resp.model, resp.input_tokens, resp.output_tokens,
+                                cache_read=resp.cache_read_input_tokens,
+                                cache_write=resp.cache_creation_input_tokens)}
     out["variants"] = len(facts["rows"])
     out["prompt"] = facts["prompt_note"]
     out["elapsed_ms"] = round((time.perf_counter() - started) * 1000, 1)

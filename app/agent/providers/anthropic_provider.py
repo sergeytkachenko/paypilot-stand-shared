@@ -70,7 +70,8 @@ class AnthropicProvider(Provider):
             "model": self.model,
             "max_tokens": self.max_tokens,
             **_temperature(),
-            "system": system,
+            "system": [{"type": "text", "text": system,
+                        "cache_control": {"type": "ephemeral"}}],
             "messages": _to_anthropic(messages),
             "tools": [{"name": t["name"], "description": t["description"],
                        "input_schema": t["input_schema"]} for t in tools],
@@ -89,9 +90,13 @@ class AnthropicProvider(Provider):
             elif block["type"] == "tool_use":
                 tool_calls.append({"id": block["id"], "name": block["name"],
                                    "arguments": block["input"]})
-        usage = data.get("usage", {})
+        usage = data.get("usage") or {}
+        cache_read = usage.get("cache_read_input_tokens") or 0
+        cache_write = usage.get("cache_creation_input_tokens") or 0
         return ModelResponse(
             text="\n".join(text_parts) or None, tool_calls=tool_calls,
-            input_tokens=usage.get("input_tokens", 0),
+            input_tokens=usage.get("input_tokens", 0) + cache_read + cache_write,
             output_tokens=usage.get("output_tokens", 0),
-            model=data.get("model", self.model))
+            model=data.get("model", self.model),
+            cache_read_input_tokens=cache_read,
+            cache_creation_input_tokens=cache_write)
