@@ -17,6 +17,8 @@ class RunSettings:
     index: str | None = None
     summarize_after: int | None = None
     clock: str | None = None
+    model: str | None = None
+    reasoning: str | None = None
 
     def is_empty(self) -> bool:
         return all(getattr(self, f.name) is None for f in fields(self))
@@ -64,6 +66,7 @@ def override(**changes):
 
 def parse_header(raw: str) -> RunSettings:
     from app import clock, defects
+    from app.agent import models
     try:
         data = json.loads(raw)
     except json.JSONDecodeError as e:
@@ -118,4 +121,16 @@ def parse_header(raw: str) -> RunSettings:
         except ValueError:
             raise ValueError(f"{HEADER}: clock is not an ISO-8601 timestamp")
         out["clock"] = clock_value
+    model = data.get("model")
+    if model not in (None, ""):
+        if model not in models.WHITELIST:
+            raise ValueError(f"{HEADER}: unknown model {model!r}. "
+                             f"Known: {models.known()}")
+        out["model"] = model
+    reasoning = data.get("reasoning")
+    if reasoning not in (None, ""):
+        if reasoning not in models.REASONING_LEVELS:
+            raise ValueError(f"{HEADER}: reasoning must be one of "
+                             f"{list(models.REASONING_LEVELS)}")
+        out["reasoning"] = reasoning
     return RunSettings(**out)

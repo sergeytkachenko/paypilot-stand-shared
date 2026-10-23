@@ -203,8 +203,11 @@ curl -s localhost:8000/chat -H 'Content-Type: application/json' \
 ```
 
 Поля: `profile`, `defects` (рядок через кому або масив), `top_k` 1..20, `index`
-(`kb_clean` | `kb_broken`), `summarize_after` ≥ 1, `clock` (ISO-8601). Невідоме
-поле або значення → `400` з поясненням. `GET /health`, `/api/_test/defects`,
+(`kb_clean` | `kb_broken`), `summarize_after` ≥ 1, `clock` (ISO-8601),
+`model` (id із `profiles/models.yaml`: `anthropic/claude-haiku-5.5`,
+`google/gemini-2.5-flash`; лише для `LLM_PROVIDER=openrouter` і `openai`),
+`reasoning` (`off` | `low` | `medium` | `high`; лише OpenRouter, типово — як
+вирішить модель). Невідоме поле або значення → `400` з поясненням. `GET /health`, `/api/_test/defects`,
 `/api/_test/clock`, `/api/_test/retrieval`, `/api/_test/summarize_after`
 повертають значення, що діють для цього запиту, і поле `scope`: `request`,
 коли заголовок щось задав, інакше `server`.

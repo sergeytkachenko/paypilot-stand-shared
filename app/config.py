@@ -24,6 +24,7 @@ def _load_dotenv() -> None:
 _load_dotenv()
 PROMPTS_DIR = ROOT / "prompts"
 PROFILES_FILE = ROOT / "profiles" / "profiles.yaml"
+MODELS_FILE = ROOT / "profiles" / "models.yaml"
 DEFECTS_FILE = ROOT / "profiles" / "defects.yaml"
 CORPUS_DIR = ROOT / "app" / "rag" / "corpus"
 DATA_DIR = ROOT / "data"
@@ -34,6 +35,7 @@ DEFECTS_ENV = os.environ.get("DEFECTS", "")
 
 LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "mock")
 LLM_MODEL = os.environ.get("LLM_MODEL", "")
+LLM_REASONING = os.environ.get("LLM_REASONING", "")
 
 
 def _optional_float(name: str) -> float | None:

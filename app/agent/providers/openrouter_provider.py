@@ -1,4 +1,6 @@
 ""
+from app import config, runctx
+from app.agent import models
 from app.agent.providers.openai_provider import OpenAIProvider
 
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -12,5 +14,11 @@ class OpenRouterProvider(OpenAIProvider):
     default_model = DEFAULT_MODEL
 
     def _system_content(self, system: str):
-        return [{"type": "text", "text": system,
-                 "cache_control": {"type": "ephemeral"}}]
+        block = {"type": "text", "text": system}
+        if models.uses_cache_control(self.model):
+            block["cache_control"] = {"type": "ephemeral"}
+        return [block]
+
+    def _extra_payload(self) -> dict:
+        level = runctx.current().reasoning or config.LLM_REASONING
+        return models.reasoning_payload(level)

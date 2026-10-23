@@ -3,7 +3,7 @@ import json
 
 import httpx
 
-from app import config
+from app import config, runctx
 from app.agent.providers.base import ModelResponse, Provider
 
 
@@ -64,10 +64,13 @@ class OpenAIProvider(Provider):
         self.api_key = getattr(config, self.key_setting)
         if not self.api_key:
             raise RuntimeError(f"{self.key_setting} is not set")
-        self.model = config.LLM_MODEL or self.default_model
+        self.model = runctx.current().model or config.LLM_MODEL or self.default_model
 
     def _system_content(self, system: str):
         return system
+
+    def _extra_payload(self) -> dict:
+        return {}
 
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.api_key}"}
@@ -78,6 +81,7 @@ class OpenAIProvider(Provider):
             **_temperature(),
             "messages": _to_openai(self._system_content(system), messages),
         }
+        payload.update(self._extra_payload())
         if tools:
             payload["tools"] = [{"type": "function", "function": {
                 "name": t["name"], "description": t["description"],
