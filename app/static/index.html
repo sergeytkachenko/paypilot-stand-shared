@@ -750,7 +750,7 @@ const I18N = {
     idxByProfile: 'за профілем', setSum: 'Задати згортку', setSearch: 'Задати пошук',
     defaultIs: 'типово {v}', changedDefault: 'змінено · типово {v}',
     memHint: 'Заняття про пам’ять вимагає знизити згортку до 2 — інакше діалог не дійде до неї й дефект не проявиться.',
-    standTitle: 'Стенд', standInfo: 'Провайдер {p} · трасування {o}', otlpOn: 'Phoenix підключено', otlpOff: 'вимкнено',
+    standTitle: 'Стенд', standInfo: 'Провайдер {p} · трасування {o}', otlpOn: 'увімкнено ({b})', otlpOff: 'вимкнено',
     scopeLocked: 'Спільний стенд: профіль, дефекти, час і пошук діють лише в цьому браузері; інші студенти їх не бачать. Без налаштувань стенд стартує як {p}.',
     scopeAdmin: 'Ви лектор: серверні дії відкриті. Профіль та інші налаштування все одно діють лише в цьому браузері.',
     scopeLocal: 'Налаштування діють лише в цьому браузері; серверні типові — у .env стенду ({p}).',
@@ -886,7 +886,7 @@ const I18N = {
     idxByProfile: 'by profile', setSum: 'Set folding', setSearch: 'Set search',
     defaultIs: 'default {v}', changedDefault: 'changed · default {v}',
     memHint: 'The memory lesson needs folding lowered to 2 — otherwise the dialogue never reaches it and the defect doesn’t show.',
-    standTitle: 'Stand', standInfo: 'Provider {p} · tracing {o}', otlpOn: 'Phoenix connected', otlpOff: 'off',
+    standTitle: 'Stand', standInfo: 'Provider {p} · tracing {o}', otlpOn: 'on ({b})', otlpOff: 'off',
     scopeLocked: 'Shared stand: profile, defects, clock and search apply to this browser only; other students don’t see them. With no settings the stand starts as {p}.',
     scopeAdmin: 'You are the lecturer: server actions are open. Profile and other settings still apply to this browser only.',
     scopeLocal: 'Settings apply to this browser only; server defaults are in the stand’s .env ({p}).',
@@ -2215,7 +2215,7 @@ async function refreshState(){
   $('scopeHint').textContent = standLocked
     ? (isAdmin ? t('scopeAdmin') : t('scopeLocked', {p: h.startup_profile}))
     : t('scopeLocal', {p: h.startup_profile});
-  $('standInfo').textContent = t('standInfo', {p: h.provider, o: h.otlp ? t('otlpOn') : t('otlpOff')});
+  $('standInfo').textContent = t('standInfo', {p: h.provider, o: h.otlp ? t('otlpOn', {b: (h.trace_backends || []).join(', ')}) : t('otlpOff')});
   $('dCount').textContent = t('dCount', {p: d.profile_defects.length, e: d.extra_defects.length});
   $('refClock').textContent = t('refClock', {t: fmtClock(standClock)});
   $('clockInp').value = c.request_override || '';

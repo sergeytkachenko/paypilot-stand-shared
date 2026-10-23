@@ -91,6 +91,14 @@ def test_stand_cost_is_written_for_a_priced_model():
     assert attrs["stand.cost_usd"] == pricing.cost_usd("anthropic/claude-haiku-5.5", 1000, 100)
 
 
+def test_only_the_root_gets_the_dialog_input_and_output():
+    tree = {"name": "agent.request", "attributes": {"request.message": "hi", "response.answer": "hello"},
+            "children": []}
+    child = {"name": "llm.call", "attributes": {}}
+    assert "langfuse.observation.input" not in otel.langfuse_attributes(child, tree)
+    assert otel.langfuse_attributes(tree, tree)["langfuse.observation.input"] == "hi"
+
+
 def test_prompt_overlays_go_to_metadata():
     tree = {"attributes": {"prompt.version": "base.v1+D05"}, "children": []}
     attrs = otel.langfuse_attributes({"name": "llm.call", "attributes": {}}, tree)
@@ -164,11 +172,12 @@ def test_prompt_shows_the_d15_context_replay(capture, enable):
     first = loop.run_turn(None, "What is my balance?", "CUS-0001")
     tree = _tree(loop.run_turn(first["session_id"], "Show transactions for ACC-1001"))
     sent = json.loads(_spans(tree, "llm.call")[0]["attributes"]["gen_ai.prompt"])
-    assert "(context replay)" in json.dumps(sent["messages"])
-    assert sent["system"]
-    assert "get_transactions" in sent["tools"]
+    assert sent["messages"][0]["role"] == "system"
+    assert "(context replay)" in json.dumps(sent["messages"][1:])
+    assert {"type": "function", "function": {"name": "get_transactions"}} in sent["tools"]
     answer = json.loads(_spans(tree, "llm.call")[0]["attributes"]["gen_ai.completion"])
-    assert answer["tool_calls"][0]["name"] == "get_transactions"
+    assert answer["role"] == "assistant"
+    assert answer["tool_calls"][0]["function"]["name"] == "get_transactions"
     assert tree["attributes"]["request.message"] == "Show transactions for ACC-1001"
     assert tree["attributes"]["response.answer"]
 

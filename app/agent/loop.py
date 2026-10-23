@@ -188,13 +188,22 @@ def _complete(provider, system: str, state: dict, span):
 
 
 def _content_attributes(system: str, messages: list[dict], specs: list[dict], resp) -> dict:
+    from app.agent.providers.openai_provider import _to_openai
+    answer = {"role": "assistant", "content": resp.text}
+    if resp.tool_calls:
+        answer["tool_calls"] = [{"id": tc["id"], "type": "function",
+                                 "function": {"name": tc["name"],
+                                              "arguments": json.dumps(tc["arguments"],
+                                                                      ensure_ascii=False)}}
+                                for tc in resp.tool_calls]
+    if resp.reasoning_text:
+        answer["reasoning"] = resp.reasoning_text
     return {
-        "gen_ai.prompt": json.dumps({"system": system, "messages": messages,
-                                     "tools": [t["name"] for t in specs]},
+        "gen_ai.prompt": json.dumps({"messages": _to_openai(system, messages),
+                                     "tools": [{"type": "function", "function": {"name": t["name"]}}
+                                               for t in specs]},
                                     ensure_ascii=False, default=str),
-        "gen_ai.completion": json.dumps({"text": resp.text, "tool_calls": resp.tool_calls,
-                                         "reasoning": resp.reasoning_text},
-                                        ensure_ascii=False, default=str),
+        "gen_ai.completion": json.dumps(answer, ensure_ascii=False, default=str),
     }
 
 

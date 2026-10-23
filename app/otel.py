@@ -144,7 +144,7 @@ def langfuse_attributes(node: dict, tree: dict) -> dict:
     root = tree.get("attributes") or {}
     out = {"langfuse.observation.type": observation_type(node["name"]),
            **trace_attributes(tree)}
-    if node is tree or node.get("span_id") == tree.get("span_id"):
+    if node is tree:
         out["langfuse.trace.metadata.step"] = root.get("dialog.step_number")
         if "request.message" in root:
             out["langfuse.observation.input"] = root["request.message"]
