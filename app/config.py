@@ -88,5 +88,12 @@ STAND_KEY_DAILY_USD = 1.0 if _key_daily_usd is None else _key_daily_usd
 _key_monthly_usd = _optional_float("STAND_KEY_MONTHLY_USD")
 STAND_KEY_MONTHLY_USD = 5.0 if _key_monthly_usd is None else _key_monthly_usd
 
+TRACE_CAPTURE_CONTENT = os.environ.get("TRACE_CAPTURE_CONTENT", "").lower() in ("1", "true", "yes")
+TRACE_TAG = os.environ.get("TRACE_TAG", "").strip()
+STAND_RELEASE = os.environ.get("STAND_RELEASE", "").strip() or "dev"
+LANGFUSE_HOST = os.environ.get("LANGFUSE_HOST", "").strip().rstrip("/")
+LANGFUSE_PUBLIC_KEY = os.environ.get("LANGFUSE_PUBLIC_KEY", "").strip()
+LANGFUSE_SECRET_KEY = os.environ.get("LANGFUSE_SECRET_KEY", "").strip()
+
 DATA_DIR.mkdir(exist_ok=True)
 TRACES_DIR.mkdir(exist_ok=True)
