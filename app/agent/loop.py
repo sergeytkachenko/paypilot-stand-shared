@@ -4,7 +4,7 @@ import uuid
 from contextlib import contextmanager
 from contextvars import ContextVar
 
-from app import budget, config, defects, session_ctx
+from app import budget, config, defects, runctx, session_ctx
 from app.agent import language, pricing, prompt, router, summarize, tools
 from app.agent.providers.base import get_provider
 from app.tracing import RequestTrace
@@ -92,6 +92,9 @@ def _run_turn(sid: str, state: dict, user_message: str) -> dict:
     trace.root.attributes["context.replay_active"] = (
         defects.is_on("D15") and any(m["role"] == "tool" for m in state["messages"]))
     trace.root.attributes["run.trace_tag"] = _trace_tag()
+    trace.root.attributes["run.model"] = getattr(provider, "model", "")
+    trace.root.attributes["run.reasoning"] = (
+        runctx.current().reasoning or config.LLM_REASONING)
     if config.TRACE_CAPTURE_CONTENT:
         trace.root.attributes["request.message"] = user_message
     provider_costs: list[float | None] = []

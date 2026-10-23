@@ -1,0 +1,5 @@
+models:
+  anthropic/claude-haiku-5.5:
+    cache_control: true
+  google/gemini-2.5-flash:
+    cache_control: true

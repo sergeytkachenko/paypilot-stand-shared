@@ -4,6 +4,7 @@ import json
 import os
 
 from app import config
+from app.agent import pricing
 
 _enabled = False
 _tracer = None
@@ -104,7 +105,8 @@ def trace_attributes(tree: dict) -> dict:
     root = tree.get("attributes") or {}
     profile = root.get("run.profile") or ""
     tags = [profile, *(root.get("run.active_defects") or []), _model(tree),
-            root.get("run.trace_tag") or ""]
+            root.get("run.trace_tag") or "",
+            f"reasoning:{root['run.reasoning']}" if root.get("run.reasoning") else ""]
     out = {
         "session.id": root.get("session.id") or "",
         "user.id": root.get("session.customer_id") or "",
@@ -121,7 +123,9 @@ def usage_details(attrs: dict) -> dict:
     written = attrs.get("gen_ai.usage.cache_creation_input_tokens") or 0
     total_out = attrs.get("gen_ai.usage.output_tokens") or 0
     reasoning = min(attrs.get("gen_ai.usage.reasoning_tokens") or 0, total_out)
-    return {"input": max(total_in - cached - written, 0),
+    uncached, cached, written = pricing.cache_buckets(
+        attrs.get("gen_ai.request.model"), total_in, cached, written)
+    return {"input": uncached,
             "input_cached_tokens": cached,
             "input_cache_creation_tokens": written,
             "output": total_out - reasoning,
@@ -139,7 +143,6 @@ def _prompt_reference(version: str) -> dict:
 
 
 def langfuse_attributes(node: dict, tree: dict) -> dict:
-    from app.agent import pricing
     attrs = node.get("attributes") or {}
     root = tree.get("attributes") or {}
     out = {"langfuse.observation.type": observation_type(node["name"]),

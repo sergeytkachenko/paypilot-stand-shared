@@ -299,7 +299,9 @@ def unpriced_models() -> list[str]:
 def validate_startup() -> None:
     if not config.STAND_KEYS_REQUIRED:
         return
-    missing = unpriced_models()
+    from app.agent import models
+    missing = unpriced_models() + [f"whitelist={m}" for m in models.known()
+                                   if pricing.price_key(m) is None]
     if missing:
         raise RuntimeError(
             "STAND_KEYS_REQUIRED=1, але для цих моделей немає ціни в "
