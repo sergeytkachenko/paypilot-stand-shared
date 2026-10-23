@@ -1,3 +1,6 @@
+include:
+  - docker-compose.langfuse.yml
+
 services:
   stand:
     build: .
@@ -32,6 +35,12 @@ services:
       # traces are mirrored to Phoenix; the stand works without it too
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://phoenix:6006
       - OTEL_SERVICE_NAME=paypilot-stand
+      - LANGFUSE_HOST=${LANGFUSE_HOST:-http://langfuse-web:3000}
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-pk-lf-paypilot-local}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-sk-lf-paypilot-local}
+      - TRACE_CAPTURE_CONTENT=${TRACE_CAPTURE_CONTENT:-1}
+      - TRACE_TAG=${TRACE_TAG:-}
+      - STAND_RELEASE=${STAND_RELEASE:-dev}
     volumes:
       - stand-data:/stand/data
       - stand-traces:/stand/traces

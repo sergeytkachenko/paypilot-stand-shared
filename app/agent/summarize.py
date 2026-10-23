@@ -75,6 +75,10 @@ def _shift_amount(match: "re.Match") -> str:
 
 
 def summarize_messages(provider, messages: list[dict]) -> str:
+    return summarize_call(provider, messages)[0]
+
+
+def summarize_call(provider, messages: list[dict]):
     instruction = (DEFECT_INSTRUCTION if defects.is_on("D06")
                    else CLEAN_INSTRUCTION)
     transcript = []
@@ -89,4 +93,4 @@ def summarize_messages(provider, messages: list[dict]) -> str:
         system=instruction,
         messages=[{"role": "user", "content": body}],
         tools=[])
-    return _transform_summary(resp.text or "")
+    return _transform_summary(resp.text or ""), body, resp

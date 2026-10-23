@@ -2,7 +2,6 @@
 import contextvars
 import hmac
 import logging
-import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import Literal
@@ -342,7 +341,9 @@ def health(request: Request):
             "active_defects": sorted(defects.active()),
             "provider": config.LLM_PROVIDER,
             "router": router.describe(),
-            "otlp": bool(os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")),
+            "otlp": bool(otel.backends()),
+            "trace_backends": otel.backends(),
+            "trace_content": config.TRACE_CAPTURE_CONTENT,
             "scope": runctx.scope(),
             "request_settings": runctx.current().as_dict(),
             "locked": config.STAND_LOCK_GLOBAL,

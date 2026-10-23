@@ -24,6 +24,15 @@ def _arguments(raw: str | None) -> dict:
     return parsed if isinstance(parsed, dict) else {"_unparsed_arguments": raw}
 
 
+def _reasoning_text(msg: dict) -> str | None:
+    if msg.get("reasoning"):
+        return msg["reasoning"]
+    parts = [d.get("text") or d.get("summary") or ""
+             for d in msg.get("reasoning_details") or [] if isinstance(d, dict)]
+    joined = "".join(parts)
+    return joined or None
+
+
 def _to_openai(system: str | list[dict], messages: list[dict]) -> list[dict]:
     out = [{"role": "system", "content": system}]
     for m in messages:
@@ -83,10 +92,15 @@ class OpenAIProvider(Provider):
                       for tc in msg.get("tool_calls") or []]
         usage = data.get("usage") or {}
         details = usage.get("prompt_tokens_details") or {}
+        completion_details = usage.get("completion_tokens_details") or {}
+        cost = usage.get("cost")
         return ModelResponse(
             text=msg.get("content"), tool_calls=tool_calls,
             input_tokens=usage.get("prompt_tokens", 0),
             output_tokens=usage.get("completion_tokens", 0),
             model=data.get("model", self.model),
             cache_read_input_tokens=details.get("cached_tokens") or 0,
-            cache_creation_input_tokens=details.get("cache_write_tokens") or 0)
+            cache_creation_input_tokens=details.get("cache_write_tokens") or 0,
+            provider_cost_usd=float(cost) if isinstance(cost, (int, float)) else None,
+            reasoning_tokens=completion_details.get("reasoning_tokens") or 0,
+            reasoning_text=_reasoning_text(msg))

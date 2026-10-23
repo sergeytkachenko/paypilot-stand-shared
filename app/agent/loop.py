@@ -91,14 +91,23 @@ def _run_turn(sid: str, state: dict, user_message: str) -> dict:
     trace.root.attributes["session.customer_id"] = session_ctx.current() or ""
     trace.root.attributes["context.replay_active"] = (
         defects.is_on("D15") and any(m["role"] == "tool" for m in state["messages"]))
+    trace.root.attributes["run.trace_tag"] = _trace_tag()
+    if config.TRACE_CAPTURE_CONTENT:
+        trace.root.attributes["request.message"] = user_message
+    provider_costs: list[float | None] = []
 
     if summarize.should_summarize(state["steps"]) and not state.get("summarized"):
         with trace.span("agent.summarize") as s:
-            summary = summarize.summarize_messages(provider, state["messages"])
+            summary, transcript, summary_resp = summarize.summarize_call(
+                provider, state["messages"])
             s.attributes.update({
                 "summary.text": summary,
                 "summary.replaced_messages": len(state["messages"]),
             })
+            s.attributes.update(_usage_attributes(summary_resp))
+            if config.TRACE_CAPTURE_CONTENT:
+                s.attributes["summary.input"] = transcript
+        provider_costs.append(summary_resp.provider_cost_usd)
         state["messages"] = [{"role": "user",
                               "content": f"(summary of earlier conversation)\n{summary}"}]
         state["summarized"] = True
@@ -114,9 +123,8 @@ def _run_turn(sid: str, state: dict, user_message: str) -> dict:
 
     for step in range(config.MAX_AGENT_STEPS):
         with trace.span("llm.call", **{"agent.loop_step": step}) as s:
-            resp = provider.complete(prompt.stamp(system),
-                                     _messages_for_model(state), tools.specs())
-            s.attributes.update(_usage_attributes(resp))
+            resp = _complete(provider, system, state, s)
+        provider_costs.append(resp.provider_cost_usd)
         total_in += resp.input_tokens
         total_out += resp.output_tokens
         cache_read += resp.cache_read_input_tokens
@@ -138,11 +146,13 @@ def _run_turn(sid: str, state: dict, user_message: str) -> dict:
             if defects.is_on("D14") and _is_empty_result(result):
                 total_in, total_out, cache_read = _d14_retry_loop(
                     trace, provider, system, state, tc, total_in, total_out,
-                    cache_read)
+                    cache_read, provider_costs)
     else:
         answer = "I could not complete this request within the step budget."
         state["messages"].append({"role": "assistant", "content": answer})
 
+    if config.TRACE_CAPTURE_CONTENT:
+        trace.root.attributes["response.answer"] = answer
     trace.root.attributes.update({
         "gen_ai.usage.total_input_tokens": total_in,
         "gen_ai.usage.total_output_tokens": total_out,
@@ -155,7 +165,37 @@ def _run_turn(sid: str, state: dict, user_message: str) -> dict:
             "elapsed_ms": tree.get("duration_ms"),
             "usage": {"input_tokens": total_in, "output_tokens": total_out,
                       "model": model,
-                      "cost_usd": pricing.total_cost_usd(call_costs)}}
+                      "cost_usd": pricing.total_cost_usd(call_costs),
+                      "provider_cost_usd": pricing.total_cost_usd(provider_costs)}}
+
+
+def _trace_tag() -> str:
+    if config.TRACE_TAG:
+        return config.TRACE_TAG
+    key = budget.active()
+    return key.label if key else ""
+
+
+def _complete(provider, system: str, state: dict, span):
+    stamped = prompt.stamp(system)
+    messages = _messages_for_model(state)
+    specs = tools.specs()
+    resp = provider.complete(stamped, messages, specs)
+    span.attributes.update(_usage_attributes(resp))
+    if config.TRACE_CAPTURE_CONTENT:
+        span.attributes.update(_content_attributes(stamped, messages, specs, resp))
+    return resp
+
+
+def _content_attributes(system: str, messages: list[dict], specs: list[dict], resp) -> dict:
+    return {
+        "gen_ai.prompt": json.dumps({"system": system, "messages": messages,
+                                     "tools": [t["name"] for t in specs]},
+                                    ensure_ascii=False, default=str),
+        "gen_ai.completion": json.dumps({"text": resp.text, "tool_calls": resp.tool_calls,
+                                         "reasoning": resp.reasoning_text},
+                                        ensure_ascii=False, default=str),
+    }
 
 
 def _usage_attributes(resp) -> dict:
@@ -165,6 +205,9 @@ def _usage_attributes(resp) -> dict:
         "gen_ai.usage.output_tokens": resp.output_tokens,
         "gen_ai.usage.cache_read_input_tokens": resp.cache_read_input_tokens,
         "gen_ai.usage.cache_creation_input_tokens": resp.cache_creation_input_tokens,
+        "gen_ai.usage.reasoning_tokens": resp.reasoning_tokens,
+        **({"provider.cost_usd": resp.provider_cost_usd}
+           if resp.provider_cost_usd is not None else {}),
     }
 
 
@@ -219,14 +262,14 @@ def _execute_tool(trace: RequestTrace, tc: dict) -> dict:
 
 def _d14_retry_loop(trace: RequestTrace, provider, system: str, state: dict,
                     tc: dict, total_in: int, total_out: int,
-                    cache_read: int) -> tuple[int, int, int]:
+                    cache_read: int,
+                    provider_costs: list[float | None]) -> tuple[int, int, int]:
     ""
     for attempt in range(1, _EMPTY_RETRY_LIMIT):
         with trace.span("llm.call", **{"agent.loop_step": f"retry-{attempt}",
                                        "retry.attempt": attempt}) as s:
-            probe = provider.complete(prompt.stamp(system),
-                                      _messages_for_model(state), tools.specs())
-            s.attributes.update(_usage_attributes(probe))
+            probe = _complete(provider, system, state, s)
+        provider_costs.append(probe.provider_cost_usd)
         total_in += probe.input_tokens
         total_out += probe.output_tokens
         cache_read += probe.cache_read_input_tokens

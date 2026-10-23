@@ -30,7 +30,8 @@ docker compose exec stand python scripts/doctor.py # діагностика
 
 Чат — **http://localhost:8000**. Там перемикач профілів, поштучне вмикання
 дефектів, керування часом і дерево спанів останнього ходу. Phoenix (UI
-трасування) — **http://localhost:6006**.
+трасування) — **http://localhost:6006**. Langfuse (трейси, сесії, ціна) —
+**http://localhost:3000**, вхід `student@paypilot.local` / `paypilot-local`.
 
 Зупинити: `docker compose down`, дані лишаються. Подивитися, на що скаржиться
 стенд: `docker compose logs stand`.
